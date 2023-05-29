@@ -1,0 +1,34 @@
+
+################################
+################################
+###
+### macOS
+###
+################################
+################################
+How to install SDL on macOS:
+Execute: brew install sdl2
+
+If you get the following warning while compiling the program:
+ld: warning: dylib (/usr/local/lib/libSDL2.dylib) was built for newer macOS version (12.0) than being linked (11.1)
+Execute: export MACOSX_DEPLOYMENT_TARGET=12.0
+
+################################
+################################
+###
+### LINUX
+###
+################################
+################################
+How to install SDL on Linux:
+
+
+
+################################
+################################
+###
+### WINDOWS
+###
+################################
+################################
+Currently there's no plans to run this project on windows
