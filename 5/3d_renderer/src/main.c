@@ -83,9 +83,8 @@ void update(void) {
     // TODO:
 }
 
-void draw_grid(void) 
-{
-    // TODO:
+void draw_grid(void) {
+    
 }
 
 void render_color_buffer(void) {
@@ -106,12 +105,7 @@ void clear_color_buffer(uint32_t color) {
     }
 }
 
-void render(void) 
-{
-    //parameters: renderer, red, green, blue, alpha
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
+void render(void) {
     draw_grid();
     render_color_buffer();
     clear_color_buffer(0xFF000000);
