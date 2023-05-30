@@ -5,7 +5,7 @@
 
 bool is_running = false;
 
-SDL_Window* window = NULL;
+SDL_Window* window = NULL; 
 SDL_Renderer* renderer = NULL;
 
 uint32_t* color_buffer = NULL;
@@ -39,7 +39,7 @@ bool initialize_window(void) {
         fprintf(stderr, "Error creating SDL window.\n");
         return false;
     }
-
+    
     // Create a SDL renderer
     renderer = SDL_CreateRenderer(window, -1, 0);
     if (!renderer) {
@@ -53,7 +53,7 @@ bool initialize_window(void) {
 void setup(void) {
     // Allocate the required memory in bytes to hold the color buffer
     color_buffer = (uint32_t*) malloc(sizeof(uint32_t) * window_width * window_height);
-
+    
     // Creating a SDL texture that is used to display the color buffer
     color_buffer_texture = SDL_CreateTexture(
         renderer,
@@ -115,6 +115,7 @@ void render(void) {
     draw_grid();
     render_color_buffer();
     clear_color_buffer(0xFF000000);
+
     SDL_RenderPresent(renderer);
 }
 
