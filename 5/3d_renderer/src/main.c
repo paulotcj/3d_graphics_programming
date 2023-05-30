@@ -90,7 +90,7 @@ void draw_grid(void) {
         {
             if(x%10 == 0 || y % 10 == 0)
             {
-                color_buffer[(window_width*y) + x] = 0xFF444444;
+                color_buffer[(window_width*y) + x] = 0xFF888888;
             }
         }
     }
