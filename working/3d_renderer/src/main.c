@@ -86,28 +86,16 @@ void update(void) {
 void draw_grid(void) {
     for (int y = 0; y < window_height; y += 10) {
         for (int x = 0; x < window_width; x += 10) {
-            color_buffer[(window_width * y) + x] = 0xFFFFFFFF;
+            color_buffer[(window_width * y) + x] = 0xFFAAAAAA;
         }
     }
 }
 
 void draw_rect(int x, int y, int width, int height, uint32_t color) {
-    
-    //The idea here is to start from X and Y position, and scan every pixel, we start from left to right
-    // top to bottom. The scan start from pixel column 0 and then progress all the way to the bottom
-    // once at the bottom, moves to the next column
-    
-    uint32_t start_color = 0;
-    color = start_color;
-
     for (int i = 0; i < width; i++) {
-
-        color = color + 1;
-         
         for (int j = 0; j < height; j++) {
-
-            int current_x = x + i; //From the defined X start pos, to x+width
-            int current_y = y + j; //From the definex Y start pos, to y+height
+            int current_x = x + i;
+            int current_y = y + j;
             color_buffer[(window_width * current_y) + current_x] = color;
         }
     }
