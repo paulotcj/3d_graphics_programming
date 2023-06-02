@@ -21,7 +21,8 @@ Execute: export MACOSX_DEPLOYMENT_TARGET=12.0
 ################################
 ################################
 How to install SDL on Linux:
-
+sudo apt install build-essential
+sudo apt install libsdl2-dev
 
 
 ################################
