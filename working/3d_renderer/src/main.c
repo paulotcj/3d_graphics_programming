@@ -78,7 +78,19 @@ vec2_t project(vec3_t point) {
 }
 
 void update(void) {
-    while (!SDL_TICKS_PASSED(SDL_GetTicks(), previous_frame_time + FRAME_TARGET_TIME));
+    // Wait some time until the reach the target frame time in milliseconds
+    //                                      current_time - previous time = time delta or time_passed
+    //                 time_between_frames - time_passed
+    int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - previous_frame_time);
+
+    // Only delay execution if we are running too fast
+    //  only engage if we actually have to wait for more than 0 (zero) and as a sanity check
+    //  if we are also having to wait less than the actual 'time_between_frames'
+    if(time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME)
+    {
+        SDL_Delay(time_to_wait);
+    }
+
 
     previous_frame_time = SDL_GetTicks();
 
