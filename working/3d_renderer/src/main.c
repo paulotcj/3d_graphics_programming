@@ -80,7 +80,7 @@ void update(void) {
     cube_rotation.z += 0.01;
 
     // Loop all triangle faces of our mesh
-    for(int i = 0 ; i < N_MESH_FACES; i++){
+    for (int i = 0; i < N_MESH_FACES; i++) {
         face_t mesh_face = mesh_faces[i];
 
         vec3_t face_vertices[3];
@@ -91,8 +91,7 @@ void update(void) {
         triangle_t projected_triangle;
 
         // Loop all three vertices of this current face and apply transformations
-
-        for(int j = 0 ; j < 3 ; j++){
+        for (int j = 0; j < 3; j++) {
             vec3_t transformed_vertex = face_vertices[j];
 
             transformed_vertex = vec3_rotate_x(transformed_vertex, cube_rotation.x);
@@ -107,31 +106,30 @@ void update(void) {
 
             // Scale and translate the projected points to the middle of the screen
             projected_point.x += (window_width / 2);
-            projected_point.y += (window_height / 2); 
+            projected_point.y += (window_height / 2);
 
             projected_triangle.points[j] = projected_point;
         }
 
         // Save the projected triangle in the array of triangles to render
         triangles_to_render[i] = projected_triangle;
-
     }
-
 }
 
 void render(void) {
     draw_grid();
 
     // Loop all projected triangles and render them
-    for(int i = 0 ; i < N_MESH_FACES; i++){
+    for (int i = 0; i < N_MESH_FACES; i++) {
         triangle_t triangle = triangles_to_render[i];
-        draw_rect( triangle.points[0].x, triangle.points[0].y, 3, 3, 0xFFFFFF00  );
-        draw_rect( triangle.points[1].x, triangle.points[1].y, 3, 3, 0xFFFFFF00  );
-        draw_rect( triangle.points[2].x, triangle.points[2].y, 3, 3, 0xFFFFFF00  );
+
+        // Draw vertex points
+        draw_rect(triangle.points[0].x, triangle.points[0].y, 3, 3, 0xFFFFFF00);
+        draw_rect(triangle.points[1].x, triangle.points[1].y, 3, 3, 0xFFFFFF00);
+        draw_rect(triangle.points[2].x, triangle.points[2].y, 3, 3, 0xFFFFFF00);
 
 
     }
-
 
     render_color_buffer();
 
