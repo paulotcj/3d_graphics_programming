@@ -52,8 +52,6 @@ void draw_grid(void) {
 }
 
 void draw_pixel(int x, int y, uint32_t color) {
-    //imagine that '(window_width * y)' means how many rows, then we add the 'x' steps in the X axis
-    // so we would have Y fully completed rows, therefore we would shift Y * window_width 
     if (x >= 0 && x < window_width && y >= 0 && y < window_height) {
         color_buffer[(window_width * y) + x] = color;
     }
@@ -65,13 +63,13 @@ void draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
 
     int longest_side_length = (abs(delta_x) >= abs(delta_y)) ? abs(delta_x) : abs(delta_y);
 
-    float x_inc = delta_x / (float)longest_side_length;
+    float x_inc = delta_x / (float)longest_side_length; 
     float y_inc = delta_y / (float)longest_side_length;
 
     float current_x = x0;
     float current_y = y0;
-    for(int i = 0; i <= longest_side_length; i++){
-        draw_pixel( round(current_x), round(current_y), color );
+    for (int i = 0; i <= longest_side_length; i++) {
+        draw_pixel(round(current_x), round(current_y), color);
         current_x += x_inc;
         current_y += y_inc;
     }
@@ -112,7 +110,6 @@ void clear_color_buffer(uint32_t color) {
 }
 
 void destroy_window(void) {
-    free(color_buffer);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

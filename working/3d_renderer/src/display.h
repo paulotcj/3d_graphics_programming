@@ -1,6 +1,3 @@
-//this (ifndef/define/endif) is a protection clause. Mostly for cases where we
-// want to prevent any issues if this file is included more than once. So the way it goes is:
-// 'if not defined, define. if it's already defined, skip.'
 #ifndef DISPLAY_H
 #define DISPLAY_H
 

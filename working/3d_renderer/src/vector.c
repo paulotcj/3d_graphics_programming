@@ -1,10 +1,6 @@
 #include <math.h>
 #include "vector.h"
 
-//Remember: cos( a + b ) = cos(a) . cos(b) – sin(a) . sin(b)
-// and
-//sin( a + b ) = sin(a) . cos(b) + cos(a) . sin(b)
-
 vec3_t vec3_rotate_x(vec3_t v, float angle) {
     vec3_t rotated_vector = {
         .x = v.x,
