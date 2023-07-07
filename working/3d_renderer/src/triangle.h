@@ -1,9 +1,8 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 
-
-#include "vector.h"
 #include <stdint.h>
+#include "vector.h"
 
 typedef struct {
     int a;
