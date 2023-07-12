@@ -6,6 +6,7 @@
 #include "display.h"
 #include "vector.h"
 #include "matrix.h"
+#include "light.h"
 #include "mesh.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,7 +28,7 @@ mat4_t proj_matrix;
 ///////////////////////////////////////////////////////////////////////////////
 void setup(void) {
     // Initialize render mode and triangle culling method
-    render_method = RENDER_WIRE;
+    render_method = RENDER_FILL_TRIANGLE;
     cull_method = CULL_BACKFACE;
 
     // Allocate the required memory in bytes to hold the color buffer
@@ -167,7 +168,9 @@ void update(void) {
         // Calculate how aligned the camera ray is with the face normal (using dot product)
         float dot_normal_camera = vec3_dot(normal, camera_ray);
 
-            // Bypass the triangles that are looking away from the camera
+        // Backface culling test to see if the current face should be projected
+		if (cull_method == CULL_BACKFACE) {
+            // Backface culling, bypassing triangles that are looking away from the camera
             if (dot_normal_camera < 0) {
                 continue;
             }
@@ -192,13 +195,17 @@ void update(void) {
         // Calculate the average depth for each face based on the vertices after transformation
         float avg_depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z) / 3.0;
 
+        // Calculate the shade intensity based on how aliged is the face normal and the opposite of the light direction
+		float light_intensity_factor = -vec3_dot(normal, light.direction);
+        // Calculate the triangle color based on the light angle
+		uint32_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
         triangle_t projected_triangle = {
             .points = {
                 { projected_points[0].x, projected_points[0].y },
                 { projected_points[1].x, projected_points[1].y },
                 { projected_points[2].x, projected_points[2].y },
             },
-            .color = mesh_face.color,
+            .color = triangle_color,
             .avg_depth = avg_depth
         };
 
