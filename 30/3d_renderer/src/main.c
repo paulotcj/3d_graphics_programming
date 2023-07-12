@@ -105,17 +105,14 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale/rotation values per animation frame
-    // mesh.rotation.x += 0.01;
-    // mesh.rotation.y += 0.01;
-    // mesh.rotation.z += 0.01;
-    // mesh.scale.x += 0.002;
-    // mesh.scale.y += 0.001;
-	mesh.translation.x += 0.01;
-	mesh.translation.z = 5.0;
+    mesh.rotation.x += 0.01;
+    mesh.rotation.y += 0.01;
+    mesh.rotation.z += 0.01;
+	mesh.scale.x += 0.002;
+	mesh.scale.y += 0.001;
 
-    // Create a scale and translatioon matrix that will be used to multiply the mesh vertices
+    // Create a scale matrix that will be used to multiply the mesh vertices
     mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
-	mat4_t translation_matrix = mat4_make_translation(mesh.translation.x, mesh.translation.y, mesh.translation.z);
 
     // Loop all triangle faces of our mesh
     int num_faces = array_length(mesh.faces);
@@ -135,9 +132,10 @@ void update(void) {
 
             // Use a matrix to scale our original vertex
             transformed_vertex = mat4_mul_vec4(scale_matrix, transformed_vertex);
-			transformed_vertex = mat4_mul_vec4(translation_matrix, transformed_vertex);
 
 
+            // Translate the vertex away from the camera
+            transformed_vertex.z += 5;
 
             // Save transformed vertex in the array of transformed vertices
             transformed_vertices[j] = transformed_vertex;
@@ -176,7 +174,7 @@ void update(void) {
         // Loop all three vertices to perform projection
         for (int j = 0; j < 3; j++) {
             // Project the current vertex
-            projected_points[j] = project(vec3_from_vec4(transformed_vertices[j]));
+            projected_points[j] = project( vec3_from_vec4( transformed_vertices[j]));
 
             // Scale and translate the projected points to the middle of the screen
             projected_points[j].x += (window_width / 2);
