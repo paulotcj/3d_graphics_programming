@@ -183,6 +183,8 @@ void update(void) {
             // Project the current vertex
             projected_points[j] = mat4_mul_vec4_project(proj_matrix, transformed_vertices[j]);
 
+            // Flip vertically since the y values of the 3D mesh grow bottom->up and in screen space y values grow top->down
+			projected_points[j].y *= -1;
             // Scale into the view
             projected_points[j].x *= (window_width / 2.0);
             projected_points[j].y *= (window_height / 2.0);
