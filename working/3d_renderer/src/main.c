@@ -7,6 +7,8 @@
 #include "vector.h"
 #include "matrix.h"
 #include "light.h"
+#include "triangle.h"
+#include "texture.h"
 #include "mesh.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -28,7 +30,7 @@ mat4_t proj_matrix;
 ///////////////////////////////////////////////////////////////////////////////
 void setup(void) {
     // Initialize render mode and triangle culling method
-    render_method = RENDER_FILL_TRIANGLE;
+    render_method = RENDER_TEXTURED_WIRE;
     cull_method = CULL_BACKFACE;
 
     // Allocate the required memory in bytes to hold the color buffer
@@ -51,8 +53,10 @@ void setup(void) {
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
 
     // Loads the vertex and face values for the mesh data structure
-    // load_cube_mesh_data();
-    load_obj_file_data("./assets/f22.obj");
+    load_cube_mesh_data();
+    //load_obj_file_data("./assets/f22.obj");
+    // Load the hardcoded texture array in the global mesh texture variable
+	mesh_texture = (uint32_t*) REDBRICK_TEXTURE;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,6 +80,10 @@ void process_input(void) {
                 render_method = RENDER_FILL_TRIANGLE;
             if (event.key.keysym.sym == SDLK_4)
                 render_method = RENDER_FILL_TRIANGLE_WIRE;
+			if(event.key.keysym.sym == SDLK_5)
+				render_method = RENDER_TEXTURED;
+			if(event.key.keysym.sym == SDLK_6)
+				render_method = RENDER_TEXTURED_WIRE;
             if (event.key.keysym.sym == SDLK_c)
                 cull_method = CULL_BACKFACE;
             if (event.key.keysym.sym == SDLK_d)
@@ -102,9 +110,9 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale, rotation, and translation values per animation frame
-    mesh.rotation.x += 0.005;
-    // mesh.rotation.y += 0.003;
-    // mesh.rotation.z += 0.004;
+    mesh.rotation.x += 0.003;
+    mesh.rotation.y += 0.000;
+    mesh.rotation.z += 0.000;
     mesh.translation.z = 5.0;
 
     // Create scale, rotation, and translation matrices that will be used to multiply the mesh vertices
@@ -205,7 +213,12 @@ void update(void) {
             .points = {
                 { projected_points[0].x, projected_points[0].y },
                 { projected_points[1].x, projected_points[1].y },
-                { projected_points[2].x, projected_points[2].y },
+                { projected_points[2].x, projected_points[2].y }
+			},
+			.texcoords = {
+				{mesh_face.a_uv.u, mesh_face.a_uv.v},
+				{mesh_face.b_uv.u, mesh_face.b_uv.v},
+				{mesh_face.c_uv.u, mesh_face.c_uv.v}
             },
             .color = triangle_color,
             .avg_depth = avg_depth
@@ -252,8 +265,18 @@ void render(void) {
             );
         }
 
+        // Draw textured triangle
+		if(render_method == RENDER_TEXTURED || render_method == RENDER_TEXTURED_WIRE){
+			draw_textured_triangle(
+                triangle.points[0].x, triangle.points[0].y, triangle.texcoords[0].u, triangle.texcoords[0].v, // vertex A
+                triangle.points[1].x, triangle.points[1].y, triangle.texcoords[1].u, triangle.texcoords[1].v, // vertex B
+                triangle.points[2].x, triangle.points[2].y, triangle.texcoords[2].u, triangle.texcoords[2].v, // vertex C
+                mesh_texture
+			);
+		}
+
         // Draw triangle wireframe
-        if (render_method == RENDER_WIRE || render_method == RENDER_WIRE_VERTEX || render_method == RENDER_FILL_TRIANGLE_WIRE) {
+        if (render_method == RENDER_WIRE || render_method == RENDER_WIRE_VERTEX || render_method == RENDER_FILL_TRIANGLE_WIRE || render_method ==  RENDER_TEXTURED_WIRE) {
             draw_triangle(
                 triangle.points[0].x, triangle.points[0].y, // vertex A
                 triangle.points[1].x, triangle.points[1].y, // vertex B
@@ -264,9 +287,9 @@ void render(void) {
 
         // Draw triangle vertex points
         if (render_method == RENDER_WIRE_VERTEX) {
-            draw_rect(triangle.points[0].x - 3, triangle.points[0].y - 3, 6, 6, 0xFFFF0000); // vertex A
-            draw_rect(triangle.points[1].x - 3, triangle.points[1].y - 3, 6, 6, 0xFFFF0000); // vertex B
-            draw_rect(triangle.points[2].x - 3, triangle.points[2].y - 3, 6, 6, 0xFFFF0000); // vertex C
+            draw_rect(triangle.points[0].x - 3, triangle.points[0].y - 3, 6, 6, 0xFF0000FF); // vertex A
+            draw_rect(triangle.points[1].x - 3, triangle.points[1].y - 3, 6, 6, 0xFF0000FF); // vertex B
+            draw_rect(triangle.points[2].x - 3, triangle.points[2].y - 3, 6, 6, 0xFF0000FF); // vertex C
         }
     }
 

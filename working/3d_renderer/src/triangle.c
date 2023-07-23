@@ -1,11 +1,6 @@
 #include "display.h"
+#include "swap.h"
 #include "triangle.h"
-
-void int_swap(int* a, int* b) {
-    int tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Draw a filled a triangle with a flat bottom
@@ -131,4 +126,35 @@ void draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t colo
     draw_line(x0, y0, x1, y1, color);
     draw_line(x1, y1, x2, y2, color);
     draw_line(x2, y2, x0, y0, color);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Draw a textured triangle based on a texture array of colors.
+// We split the original triangle in two, half flat-bottom and half flat-top.
+///////////////////////////////////////////////////////////////////////////////
+//
+//        v0
+//        /\
+//       /  \
+//      /    \
+//     /      \
+//   v1--------\
+//     \_       \
+//        \_     \
+//           \_   \
+//              \_ \
+//                 \\
+//                   \
+//                    v2
+//
+///////////////////////////////////////////////////////////////////////////////
+void draw_textured_triangle(
+    int x0, int y0, float u0, float v0,
+    int x1, int y1, float u1, float v1,
+    int x2, int y2, float u2, float v2,
+    uint32_t* texture
+) {
+    // TODO:
+    // Loop all the pixels of the triangle and draw them based on the
+    // texel color that comes from the source texture array.
 }
