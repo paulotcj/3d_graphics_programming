@@ -175,38 +175,37 @@ void draw_texel(
     vec4_t point_a, vec4_t point_b, vec4_t point_c,
     tex2_t a_uv, tex2_t b_uv, tex2_t c_uv
 ) {
-	vec2_t p = {x, y};
-	vec2_t a = vec2_from_vec4(point_a);
-	vec2_t b = vec2_from_vec4(point_b);
-	vec2_t c = vec2_from_vec4(point_c);
-
+    vec2_t p = { x, y };
+    vec2_t a = vec2_from_vec4(point_a);
+    vec2_t b = vec2_from_vec4(point_b);
+    vec2_t c = vec2_from_vec4(point_c);
 
     // Calculate the barycentric coordinates of our point 'p' inside the triangle
-	vec3_t weights = barycentric_weights(a, b, c, p);
+    vec3_t weights = barycentric_weights(a, b, c, p);
 
     float alpha = weights.x;
     float beta = weights.y;
     float gamma = weights.z;
 
     // Variables to store the interpolated values of U, V, and also 1/w for the current pixel
-	float interpolated_u;
-	float interpolated_v;
-	float interpolated_reciprocal_w;
+    float interpolated_u;
+    float interpolated_v;
+    float interpolated_reciprocal_w;
 
     // Perform the interpolation of all U/w and V/w values using barycentric weights and a factor of 1/w
-	interpolated_u = (a_uv.u / point_a.w) * alpha + (b_uv.u / point_b.w) * beta + (c_uv.u / point_c.w) * gamma;
-	interpolated_v = (a_uv.v / point_a.w) * alpha + (b_uv.v / point_b.w) * beta + (c_uv.v / point_c.w) * gamma;
+    interpolated_u = (a_uv.u / point_a.w) * alpha + (b_uv.u / point_b.w) * beta + (c_uv.u / point_c.w) * gamma;
+    interpolated_v = (a_uv.v / point_a.w) * alpha + (b_uv.v / point_b.w) * beta + (c_uv.v / point_c.w) * gamma;
 
     // Also interpolate the value of 1/w for the current pixel
-	interpolated_reciprocal_w = (1 / point_a.w) * alpha + (1 / point_b.w) * beta + (1 / point_c.w) * gamma;
+    interpolated_reciprocal_w = (1 / point_a.w) * alpha + (1 / point_b.w) * beta + (1 / point_c.w) * gamma;
 
     // Now we can divide back both interpolated values by 1/w
-	interpolated_u /= interpolated_reciprocal_w;
-	interpolated_v /= interpolated_reciprocal_w;
+    interpolated_u /= interpolated_reciprocal_w;
+    interpolated_v /= interpolated_reciprocal_w;
 
     // Map the UV coordinate to the full texture width and height
-    int tex_x = abs((int)(interpolated_u * texture_width));
-    int tex_y = abs((int)(interpolated_v * texture_height));
+    int tex_x = abs((int)(interpolated_u * texture_width)) % texture_width;
+    int tex_y = abs((int)(interpolated_v * texture_height)) % texture_height;
 
     draw_pixel(x, y, texture[(texture_width * tex_y) + tex_x]);
 }
@@ -241,24 +240,24 @@ void draw_textured_triangle(
     if (y0 > y1) {
         int_swap(&y0, &y1);
         int_swap(&x0, &x1);
-		float_swap(&z0, &z1);
-		float_swap(&w0, &w1);
+        float_swap(&z0, &z1);
+        float_swap(&w0, &w1);
         float_swap(&u0, &u1);
         float_swap(&v0, &v1);
     }
     if (y1 > y2) {
         int_swap(&y1, &y2);
         int_swap(&x1, &x2);
-		float_swap(&z1, &z2);
-		float_swap(&w1, &w2);
+        float_swap(&z1, &z2);
+        float_swap(&w1, &w2);
         float_swap(&u1, &u2);
         float_swap(&v1, &v2);
     }
     if (y0 > y1) {
         int_swap(&y0, &y1);
         int_swap(&x0, &x1);
-		float_swap(&z0,&z1);
-		float_swap(&w0,&w1);
+        float_swap(&z0, &z1);
+        float_swap(&w0, &w1);
         float_swap(&u0, &u1);
         float_swap(&v0, &v1);
     }
@@ -269,12 +268,12 @@ void draw_textured_triangle(
     v2 = 1.0 - v2;
 
     // Create vector points and texture coords after we sort the vertices
-	vec4_t point_a = {x0,y0,z0,w0};
-	vec4_t point_b = {x1,y1,z1,w1};
-	vec4_t point_c = {x2,y2,z2,w2};
-	tex2_t a_uv = {u0,v0};
-	tex2_t b_uv = {u1,v1};
-	tex2_t c_uv = {u2,v2};
+    vec4_t point_a = { x0, y0, z0, w0 };
+    vec4_t point_b = { x1, y1, z1, w1 };
+    vec4_t point_c = { x2, y2, z2, w2 };
+    tex2_t a_uv = { u0, v0 };
+    tex2_t b_uv = { u1, v1 };
+    tex2_t c_uv = { u2, v2 };
 
     ///////////////////////////////////////////////////////
     // Render the upper part of the triangle (flat-bottom)
@@ -321,7 +320,7 @@ void draw_textured_triangle(
 
             for (int x = x_start; x < x_end; x++) {
                 // Draw our pixel with the color that comes from the texture
-                draw_texel(x, y, texture, point_a, point_b, point_c, a_uv, b_uv, c_uv );
+                draw_texel(x, y, texture, point_a, point_b, point_c, a_uv, b_uv, c_uv);
             }
         }
     }
