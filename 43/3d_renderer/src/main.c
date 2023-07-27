@@ -23,7 +23,7 @@ triangle_t* triangles_to_render = NULL;
 bool is_running = false;
 int previous_frame_time = 0;
 
-vec3_t camera_position = { 0, 0, 0 };
+vec3_t camera_position = { .x = 0, .y = 0, .z = 0 };
 mat4_t proj_matrix;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,6 @@ void setup(void) {
 
     // Allocate the required memory in bytes to hold the color buffer
     color_buffer = (uint32_t*)malloc(sizeof(uint32_t) * window_width * window_height);
-	z_buffer = (float*)malloc(sizeof(float) * window_width * window_height);
 
     // Creating a SDL texture that is used to display the color buffer
     color_buffer_texture = SDL_CreateTexture(
@@ -55,11 +54,10 @@ void setup(void) {
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
 
     // Loads the vertex and face values for the mesh data structure
-    // load_cube_mesh_data();
-    load_obj_file_data("./assets/f117.obj");
+    load_obj_file_data("./assets/crab.obj");
 
     // Load the texture information from an external PNG file
-    load_png_texture_data("./assets/f117.png");
+    load_png_texture_data("./assets/crab.png");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,10 +111,10 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale, rotation, and translation values per animation frame
-    mesh.rotation.x += 0.006;
-    mesh.rotation.y += 0.000;
+    mesh.rotation.x += 0.000;
+    mesh.rotation.y += 0.004;
     mesh.rotation.z += 0.000;
-    mesh.translation.z = 4.0;
+    mesh.translation.z = 5.0;
 
     // Create scale, rotation, and translation matrices that will be used to multiply the mesh vertices
     mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
@@ -234,17 +232,15 @@ void update(void) {
         array_push(triangles_to_render, projected_triangle);
     }
 
-    // Sort the triangles to render by their avg_depth to perform painters algorithm with filled polygons 
-    if (render_method == RENDER_FILL_TRIANGLE || render_method == RENDER_FILL_TRIANGLE_WIRE) {
-        int num_triangles = array_length(triangles_to_render);
-        for (int i = 0; i < num_triangles; i++) {
-            for (int j = i; j < num_triangles; j++) {
-                if (triangles_to_render[i].avg_depth < triangles_to_render[j].avg_depth) {
-                    // Swap the triangles positions in the array
-                    triangle_t temp = triangles_to_render[i];
-                    triangles_to_render[i] = triangles_to_render[j];
-                    triangles_to_render[j] = temp;
-                }
+    // Sort the triangles to render by their avg_depth
+    int num_triangles = array_length(triangles_to_render);
+    for (int i = 0; i < num_triangles; i++) {
+        for (int j = i; j < num_triangles; j++) {
+            if (triangles_to_render[i].avg_depth < triangles_to_render[j].avg_depth) {
+                // Swap the triangles positions in the array
+                triangle_t temp = triangles_to_render[i];
+                triangles_to_render[i] = triangles_to_render[j];
+                triangles_to_render[j] = temp;
             }
         }
     }
@@ -307,7 +303,6 @@ void render(void) {
     render_color_buffer();
 
     clear_color_buffer(0xFF000000);
-    clear_z_buffer();
 
     SDL_RenderPresent(renderer);
 }
@@ -317,7 +312,6 @@ void render(void) {
 ///////////////////////////////////////////////////////////////////////////////
 void free_resources(void) {
     free(color_buffer);
-    free(z_buffer);
     upng_free(png_texture);
     array_free(mesh.faces);
     array_free(mesh.vertices);
