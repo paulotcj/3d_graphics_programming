@@ -2,7 +2,7 @@
 #include "vector.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-// Implementations of Vector 2D functions
+// Implementations of Vector 2 functions
 ///////////////////////////////////////////////////////////////////////////////
 float vec2_length(vec2_t v) {
     return sqrt(v.x * v.x + v.y * v.y);
@@ -51,7 +51,7 @@ void vec2_normalize(vec2_t* v) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Implementations of Vector 3D functions
+// Implementations of Vector 3 functions
 ///////////////////////////////////////////////////////////////////////////////
 float vec3_length(vec3_t v) {
     return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -151,7 +151,8 @@ vec3_t vec3_from_vec4(vec4_t v) {
     vec3_t result = { v.x, v.y, v.z };
     return result;
 }
+
 vec2_t vec2_from_vec4(vec4_t v) {
-	vec2_t result = { v.x, v.y };
-	return result;
+    vec2_t result = { v.x, v.y };
+    return result;
 }

@@ -34,9 +34,9 @@ void setup(void) {
     render_method = RENDER_TEXTURED;
     cull_method = CULL_BACKFACE;
 
-    // Allocate the required memory in bytes to hold the color buffer
+    // Allocate the required memory in bytes to hold the color buffer and the z-buffer
     color_buffer = (uint32_t*)malloc(sizeof(uint32_t) * window_width * window_height);
-	z_buffer = (float*)malloc(sizeof(float) * window_width * window_height);
+    z_buffer = (float*)malloc(sizeof(float) * window_width * window_height);
 
     // Creating a SDL texture that is used to display the color buffer
     color_buffer_texture = SDL_CreateTexture(
