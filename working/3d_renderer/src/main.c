@@ -8,6 +8,7 @@
 #include "vector.h"
 #include "matrix.h"
 #include "light.h"
+#include "camera.h"
 #include "triangle.h"
 #include "texture.h"
 #include "mesh.h"
@@ -17,7 +18,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 bool is_running = false;
 int previous_frame_time = 0;
-vec3_t camera_position = { 0, 0, 0 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // Array to store triangles that should be rendered each frame
@@ -31,6 +31,7 @@ int num_triangles_to_render = 0;
 ///////////////////////////////////////////////////////////////////////////////
 mat4_t world_matrix;
 mat4_t proj_matrix;
+mat4_t view_matrix;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup function to initialize variables and game objects
@@ -123,6 +124,13 @@ void update(void) {
     mesh.rotation.z += 0.000;
     mesh.translation.z = 4.0;
 
+    // Change the camera position per animation frame
+	camera.position.x += 0.008;
+	camera.position.y += 0.008;
+    // Create the view matrix looking at a hardcoded target point
+	vec3_t target = {0,0,4.0};
+	vec3_t up_direction = {0,1,0};
+	view_matrix = mat4_look_at(camera.position, target, up_direction);
     // Create scale, rotation, and translation matrices that will be used to multiply the mesh vertices
     mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
     mat4_t translation_matrix = mat4_make_translation(mesh.translation.x, mesh.translation.y, mesh.translation.z);
@@ -159,6 +167,9 @@ void update(void) {
             // Multiply the world matrix by the original vector
             transformed_vertex = mat4_mul_vec4(world_matrix, transformed_vertex);
 
+            // Multiply the view matrix by the vector to transform the scene to camera space
+			transformed_vertex = mat4_mul_vec4(view_matrix, transformed_vertex);
+			
             // Save transformed vertex in the array of transformed vertices
             transformed_vertices[j] = transformed_vertex;
         }
@@ -179,7 +190,8 @@ void update(void) {
         vec3_normalize(&normal);
 
         // Find the vector between vertex A in the triangle and the camera origin
-        vec3_t camera_ray = vec3_sub(camera_position, vector_a);
+		vec3_t origin = {0,0,0};
+        vec3_t camera_ray = vec3_sub(origin, vector_a);
 
         // Calculate how aligned the camera ray is with the face normal (using dot product)
         float dot_normal_camera = vec3_dot(normal, camera_ray);
@@ -233,8 +245,8 @@ void update(void) {
         };
 
         // Save the projected triangle in the array of triangles to render
-		if(num_triangles_to_render < MAX_TRIANGLES) {
-			triangles_to_render[num_triangles_to_render++] = projected_triangle;
+        if (num_triangles_to_render < MAX_TRIANGLES) {
+            triangles_to_render[num_triangles_to_render++] = projected_triangle;
         }
     }
 }
