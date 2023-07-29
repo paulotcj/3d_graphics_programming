@@ -64,7 +64,8 @@ void setup(void) {
     proj_matrix = mat4_make_perspective(fov, aspect, z_near, z_far);
 
     // Initialize frustum planes with a point and a normal
-	init_frustum_planes(fov,z_near,z_far);
+    init_frustum_planes(fov, z_near, z_far);
+
     // Loads the vertex and face values for the mesh data structure
     load_obj_file_data("./assets/cube.obj");
 
@@ -169,6 +170,7 @@ void update(void) {
     // Loop all triangle faces of our mesh
     int num_faces = array_length(mesh.faces);
     for (int i = 0; i < num_faces; i++) {
+		if(i != 4) continue;
         face_t mesh_face = mesh.faces[i];
 
         vec3_t face_vertices[3];
@@ -231,16 +233,17 @@ void update(void) {
                 continue;
             }
         }
-		
+        
         // Create a polygon from the original transformed triangle to be clipped
-		polygon_t polygon = create_polygon_from_triangle(
-			vec3_from_vec4(transformed_vertices[0]),
-			vec3_from_vec4(transformed_vertices[1]),
-			vec3_from_vec4(transformed_vertices[2])
-		);
-		
+        polygon_t polygon = create_polygon_from_triangle(
+            vec3_from_vec4(transformed_vertices[0]),
+            vec3_from_vec4(transformed_vertices[1]),
+            vec3_from_vec4(transformed_vertices[2])
+        );
+        
         // Clip the polygon and returns a new polygon with potential new vertices
-		clip_polygon(&polygon);
+        clip_polygon(&polygon);
+
         // TODO: after clipping, we need to break the polygon into triangles
 
         vec4_t projected_points[3];
