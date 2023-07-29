@@ -231,6 +231,17 @@ void update(void) {
                 continue;
             }
         }
+		
+        // Create a polygon from the original transformed triangle to be clipped
+		polygon_t polygon = create_polygon_from_triangle(
+			vec3_from_vec4(transformed_vertices[0]),
+			vec3_from_vec4(transformed_vertices[1]),
+			vec3_from_vec4(transformed_vertices[2])
+		);
+		
+        // Clip the polygon and returns a new polygon with potential new vertices
+		clip_polygon(&polygon);
+        // TODO: after clipping, we need to break the polygon into triangles
 
         vec4_t projected_points[3];
 
