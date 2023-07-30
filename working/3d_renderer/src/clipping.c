@@ -120,15 +120,22 @@ void clip_polygon_against_plane(polygon_t* polygon, int plane) {
         if (current_dot * previous_dot < 0) {
             // Find the interpolation factor t
             float t = previous_dot / (previous_dot - current_dot);
+
             // Calculate the intersection point I = Q1 + t(Q2-Q1)
-            vec3_t intersection_point = vec3_clone(current_vertex);              // I =        Qc
-            intersection_point = vec3_sub(intersection_point, *previous_vertex); // I =       (Qc-Qp)
+			vec3_t intersection_point = {
+				.x = float_lerp(previous_vertex->x, current_vertex->x, t),
+				.y = float_lerp(previous_vertex->y, current_vertex->y, t),
+				.z = float_lerp(previous_vertex->z, current_vertex->z, t)
+			};
             // Use the lerp formula to get the interpolated U and V texture coordinates
-            intersection_point = vec3_mul(intersection_point, t);                // I =      t(Qc-Qp)
-            intersection_point = vec3_add(intersection_point, *previous_vertex); // I = Qp + t(Qc-Qp)
+			tex2_t interpolated_texcoord = {
+				.u = float_lerp(previous_texcoord->u , current_texcoord->u, t),
+				.v = float_lerp(previous_texcoord->v , current_texcoord->v, t)
+			};
 
             // Insert the intersection point to the list of "inside vertices"
             inside_vertices[num_inside_vertices] = vec3_clone(&intersection_point);
+			inside_texcoords[num_inside_vertices] = tex2_clone(&interpolated_texcoord);
             num_inside_vertices++;
         }
 
@@ -136,18 +143,22 @@ void clip_polygon_against_plane(polygon_t* polygon, int plane) {
         if (current_dot > 0) {
             // Insert the current vertex to the list of "inside vertices"
             inside_vertices[num_inside_vertices] = vec3_clone(current_vertex);
+			inside_texcoords[num_inside_vertices] = tex2_clone(current_texcoord);
             num_inside_vertices++;
         }
 
         // Move to the next vertex
         previous_dot = current_dot;
         previous_vertex = current_vertex;
+		previous_texcoord = current_texcoord;
         current_vertex++;
+		current_texcoord++;
     }
     
     // At the end, copy the list of inside vertices into the destination polygon (out parameter)
     for (int i = 0; i < num_inside_vertices; i++) {
         polygon->vertices[i] = vec3_clone(&inside_vertices[i]);
+		polygon->texcoords[i] = tex2_clone(&inside_texcoords[i]);
     }
     polygon->num_vertices = num_inside_vertices;
 }
