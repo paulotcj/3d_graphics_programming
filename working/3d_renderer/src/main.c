@@ -44,24 +44,25 @@ void setup(void) {
     set_cull_method(CULL_BACKFACE);
 
     // Initialize the scene light direction
-	init_light(vec3_new(0,0,1));
+    init_light(vec3_new(0, 0, 1));
+
     // Initialize the perspective projection matrix
     float aspect_y = (float)get_window_height() / (float)get_window_width();
     float aspect_x = (float)get_window_width() / (float)get_window_height();
     float fov_y = 3.141592 / 3.0; // the same as 180/3, or 60deg
     float fov_x = atan(tan(fov_y / 2) * aspect_x) * 2;
-    float z_near = 1.0;
-    float z_far = 20.0;
-    proj_matrix = mat4_make_perspective(fov_y, aspect_y, z_near, z_far);
+    float znear = 1.0;
+    float zfar = 20.0;
+    proj_matrix = mat4_make_perspective(fov_y, aspect_y, znear, zfar);
 
     // Initialize frustum planes with a point and a normal
-    init_frustum_planes(fov_x, fov_y, z_near, z_far);
+    init_frustum_planes(fov_x, fov_y, znear, zfar);
 
     // Loads the vertex and face values for the mesh data structure
-    load_obj_file_data("./assets/f22.obj");
+    load_obj_file_data("./assets/efa.obj");
 
     // Load the texture information from an external PNG file
-    load_png_texture_data("./assets/f22.png");
+    load_png_texture_data("./assets/efa.png");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -111,30 +112,30 @@ void process_input(void) {
                     set_cull_method(CULL_NONE);
                     break;
                 }
-                if (event.key.keysym.sym == SDLK_UP) {
-                    camera.position.y += 3.0 * delta_time;
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_DOWN) {
-                    camera.position.y -= 3.0 * delta_time;
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_a) {
-                    camera.yaw -= 1.0 * delta_time;
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_d) {
-                    camera.yaw += 1.0 * delta_time;
-                    break;
-                }
                 if (event.key.keysym.sym == SDLK_w) {
-                    camera.forward_velocity = vec3_mul(camera.direction, 5.0 * delta_time); 
-                    camera.position = vec3_add(camera.position, camera.forward_velocity);
+                    rotate_camera_pitch(+3.0 * delta_time);
                     break;
                 }
                 if (event.key.keysym.sym == SDLK_s) {
-                    camera.forward_velocity = vec3_mul(camera.direction, 5.0 * delta_time); 
-                    camera.position = vec3_sub(camera.position, camera.forward_velocity);
+                    rotate_camera_pitch(-3.0 * delta_time);
+                    break;
+                }
+                if (event.key.keysym.sym == SDLK_RIGHT) {
+                    rotate_camera_yaw(+1.0 * delta_time);
+                    break;
+                }
+                if (event.key.keysym.sym == SDLK_LEFT) {
+                    rotate_camera_yaw(-1.0 * delta_time);
+                    break;
+                }
+                if (event.key.keysym.sym == SDLK_UP) {
+                    update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time));
+                    update_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()));
+                    break;
+                }
+                if (event.key.keysym.sym == SDLK_DOWN) {
+                    update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time));
+                    update_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()));
                     break;
                 }
                 break;
@@ -163,22 +164,10 @@ void update(void) {
     num_triangles_to_render = 0;
 
     // Change the mesh scale, rotation, and translation values per animation frame
-    mesh.rotation.x += 0.5 * delta_time;
+    mesh.rotation.x += 0.0 * delta_time;
     mesh.rotation.y += 0.0 * delta_time;
     mesh.rotation.z += 0.0 * delta_time;
     mesh.translation.z = 5.0;
-
-    // Initialize the target looking at the positive z-axis
-    vec3_t target = { 0, 0, 1 };
-    mat4_t camera_yaw_rotation = mat4_make_rotation_y(camera.yaw);
-    camera.direction = vec3_from_vec4(mat4_mul_vec4(camera_yaw_rotation, vec4_from_vec3(target)));
-
-    // Offset the camera position in the direction where the camera is pointing at
-    target = vec3_add(camera.position, camera.direction);
-    vec3_t up_direction = { 0, 1, 0 };
-    
-    // Create the view matrix
-    view_matrix = mat4_look_at(camera.position, target, up_direction);
 
     // Create scale, rotation, and translation matrices that will be used to multiply the mesh vertices
     mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
@@ -186,6 +175,11 @@ void update(void) {
     mat4_t rotation_matrix_x = mat4_make_rotation_x(mesh.rotation.x);
     mat4_t rotation_matrix_y = mat4_make_rotation_y(mesh.rotation.y);
     mat4_t rotation_matrix_z = mat4_make_rotation_z(mesh.rotation.z);
+
+    // Update camera look at target to create view matrix
+    vec3_t target = get_camera_lookat_target();
+    vec3_t up_direction = vec3_new(0, 1, 0);
+    view_matrix = mat4_look_at(get_camera_position(), target, up_direction);
 
     // Loop all triangle faces of our mesh
     int num_faces = array_length(mesh.faces);
@@ -246,7 +240,7 @@ void update(void) {
         float dot_normal_camera = vec3_dot(normal, camera_ray);
 
         // Backface culling test to see if the current face should be projected
-        if (is_cull_backface()) {
+        if (should_cull_backface()) {
             // Backface culling, bypassing triangles that are looking away from the camera
             if (dot_normal_camera < 0) {
                 continue;
@@ -306,7 +300,7 @@ void update(void) {
             float light_intensity_factor = -vec3_dot(normal, get_light_direction());
 
             // Calculate the triangle color based on the light angle
-            uint32_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
+            uint32_t triangle_color = apply_light_intensity(mesh_face.color, light_intensity_factor);
 
             // Create the final projected triangle that will be rendered in screen space
             triangle_t triangle_to_render = {
@@ -346,7 +340,7 @@ void render(void) {
         triangle_t triangle = triangles_to_render[i];
 
         // Draw filled triangle
-        if (should_render_filled_triangles()){
+        if (should_render_filled_triangle()){
             draw_filled_triangle(
                 triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w, // vertex A
                 triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w, // vertex B
@@ -356,7 +350,7 @@ void render(void) {
         }
 
         // Draw textured triangle
-        if (should_render_textured_triangles()) {
+        if (should_render_textured_triangle()) {
             draw_textured_triangle(
                 triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w, triangle.texcoords[0].u, triangle.texcoords[0].v, // vertex A
                 triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w, triangle.texcoords[1].u, triangle.texcoords[1].v, // vertex B
@@ -366,7 +360,7 @@ void render(void) {
         }
 
         // Draw triangle wireframe
-        if (should_render_wireframe()) {
+        if (should_render_wire()) {
             draw_triangle(
                 triangle.points[0].x, triangle.points[0].y, // vertex A
                 triangle.points[1].x, triangle.points[1].y, // vertex B
@@ -394,13 +388,14 @@ void free_resources(void) {
     upng_free(png_texture);
     array_free(mesh.faces);
     array_free(mesh.vertices);
+    destroy_window();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Main function
 ///////////////////////////////////////////////////////////////////////////////
 int main(void) {
-    is_running = initialize_window();
+    is_running = init_window();
 
     setup();
 
@@ -410,7 +405,6 @@ int main(void) {
         render();
     }
 
-    destroy_window();
     free_resources();
 
     return 0;
