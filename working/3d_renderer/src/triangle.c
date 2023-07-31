@@ -45,9 +45,9 @@ vec3_t barycentric_weights(vec2_t a, vec2_t b, vec2_t c, vec2_t p) {
 // Draw a triangle using three raw line calls
 ///////////////////////////////////////////////////////////////////////////////
 void draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color) {
-	draw_line(x0,y0,x1,y1,color);
-	draw_line(x1,y1,x2,y2,color);
-	draw_line(x2,y2,x0,y0,color);
+    draw_line(x0, y0, x1, y1, color);
+    draw_line(x1, y1, x2, y2, color);
+    draw_line(x2, y2, x0, y0, color);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -58,32 +58,32 @@ void draw_triangle_pixel(
     vec4_t point_a, vec4_t point_b, vec4_t point_c
 ) {
     // Create three vec2 to find the interpolation
-	vec2_t p = { x, y };
-	vec2_t a = vec2_from_vec4(point_a);
-	vec2_t b = vec2_from_vec4(point_b);
-	vec2_t c = vec2_from_vec4(point_c);
-	
-    // Calculate the barycentric coordinates of our point 'p' inside the triangle
-	vec3_t weights = barycentric_weights(a,b,c,p);
+    vec2_t p = { x, y };
+    vec2_t a = vec2_from_vec4(point_a);
+    vec2_t b = vec2_from_vec4(point_b);
+    vec2_t c = vec2_from_vec4(point_c);
 
-	float alpha = weights.x;
-	float beta = weights.y;
-	float gamma = weights.z;
-	
+    // Calculate the barycentric coordinates of our point 'p' inside the triangle
+    vec3_t weights = barycentric_weights(a, b, c, p);
+
+    float alpha = weights.x;
+    float beta = weights.y;
+    float gamma = weights.z;
+    
     // Interpolate the value of 1/w for the current pixel
-	float interpolated_reciprocal_w = (1 / point_a.w) * alpha + ( 1 / point_b.w) * beta + ( 1 / point_c.w) * gamma;
-	
+    float interpolated_reciprocal_w = (1 / point_a.w) * alpha + (1 / point_b.w) * beta + (1 / point_c.w) * gamma;
+
     // Adjust 1/w so the pixels that are closer to the camera have smaller values
-	interpolated_reciprocal_w = 1.0 - interpolated_reciprocal_w;
-	
+    interpolated_reciprocal_w = 1.0 - interpolated_reciprocal_w;
+
     // Only draw the pixel if the depth value is less than the one previously stored in the z-buffer
-	if(interpolated_reciprocal_w < z_buffer[(window_width*y) + x]) {
+    if (interpolated_reciprocal_w < get_zbuffer_at(x, y)){
         // Draw a pixel at position (x,y) with a solid color
-		draw_pixel(x,y,color);
-		
+        draw_pixel(x, y, color);
+
         // Update the z-buffer value with the 1/w of this current pixel
-		z_buffer[(window_width*y) + x] = interpolated_reciprocal_w;
-	}
+        update_zbuffer_at(x, y, interpolated_reciprocal_w);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -105,6 +105,8 @@ void draw_triangle_texel(
     float alpha = weights.x;
     float beta = weights.y;
     float gamma = weights.z;
+
+    // Check if the values of alpha beta and gamma are valid
     
     // Variables to store the interpolated values of U, V, and also 1/w for the current pixel
     float interpolated_u;
@@ -130,12 +132,12 @@ void draw_triangle_texel(
     interpolated_reciprocal_w = 1.0 - interpolated_reciprocal_w;
 
     // Only draw the pixel if the depth value is less than the one previously stored in the z-buffer
-    if (interpolated_reciprocal_w < z_buffer[(window_width * y) + x]) {
+    if (interpolated_reciprocal_w < get_zbuffer_at(x, y)) {
         // Draw a pixel at position (x,y) with the color that comes from the mapped texture
         draw_pixel(x, y, texture[(texture_width * tex_y) + tex_x]);
 
         // Update the z-buffer value with the 1/w of this current pixel
-        z_buffer[(window_width * y) + x] = interpolated_reciprocal_w;
+        update_zbuffer_at(x, y, interpolated_reciprocal_w);
     }
 }
 
@@ -333,6 +335,7 @@ void draw_filled_triangle(
             }
         }
     }
+
     ///////////////////////////////////////////////////////
     // Render the bottom part of the triangle (flat-top)
     ///////////////////////////////////////////////////////
