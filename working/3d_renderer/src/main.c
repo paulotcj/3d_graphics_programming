@@ -59,10 +59,10 @@ void setup(void) {
     init_frustum_planes(fov_x, fov_y, znear, zfar);
 
     // Loads the vertex and face values for the mesh data structure
-    load_obj_file_data("./assets/efa.obj");
+    load_obj_file_data("./assets/f22.obj");
 
     // Load the texture information from an external PNG file
-    load_png_texture_data("./assets/efa.png");
+    load_png_texture_data("./assets/f22.png");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
