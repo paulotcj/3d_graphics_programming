@@ -43,6 +43,8 @@ void setup(void) {
     set_render_method(RENDER_WIRE);
     set_cull_method(CULL_BACKFACE);
 
+    // Initialize the scene light direction
+	init_light(vec3_new(0,0,1));
     // Initialize the perspective projection matrix
     float aspect_y = (float)get_window_height() / (float)get_window_width();
     float aspect_x = (float)get_window_width() / (float)get_window_height();
@@ -161,10 +163,10 @@ void update(void) {
     num_triangles_to_render = 0;
 
     // Change the mesh scale, rotation, and translation values per animation frame
-    mesh.rotation.x += -0.2 * delta_time;
+    mesh.rotation.x += 0.5 * delta_time;
     mesh.rotation.y += 0.0 * delta_time;
     mesh.rotation.z += 0.0 * delta_time;
-    mesh.translation.z = 4.0;
+    mesh.translation.z = 5.0;
 
     // Initialize the target looking at the positive z-axis
     vec3_t target = { 0, 0, 1 };
@@ -301,7 +303,7 @@ void update(void) {
             }
 
             // Calculate the shade intensity based on how aliged is the normal with the flipped light direction ray
-            float light_intensity_factor = -vec3_dot(normal, light.direction);
+            float light_intensity_factor = -vec3_dot(normal, get_light_direction());
 
             // Calculate the triangle color based on the light angle
             uint32_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
