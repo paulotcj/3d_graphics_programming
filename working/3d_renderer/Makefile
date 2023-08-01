@@ -1,5 +1,5 @@
 build:
-	gcc -Wall -std=gnu99 ./src/*.c -lSDL2 -lm -o renderer
+	gcc -Wall -std=c99 ./src/*.c -lSDL2 -lm -o renderer
 	./renderer
 
 run:
@@ -7,5 +7,3 @@ run:
 
 clean:
 	rm renderer
-
-
