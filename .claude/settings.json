@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item -ItemType Directory -Force C:\\\\Users\\\\paulo\\\\repositories\\\\3d_graphics_programming\\\\PYTHON\\\\22)",
+      "PowerShell(Copy-Item -Recurse C:\\\\Users\\\\paulo\\\\repositories\\\\3d_graphics_programming\\\\PYTHON\\\\21\\\\3d_renderer C:\\\\Users\\\\paulo\\\\repositories\\\\3d_graphics_programming\\\\PYTHON\\\\22\\\\3d_renderer)",
+      "PowerShell(Set-Location \"C:/Users/paulo/repositories/3d_graphics_programming/PYTHON/1/3d_renderer\"; py -3.12 main.py; \"EXITCODE=$LASTEXITCODE\")",
+      "PowerShell(Set-Location \"c:/Users/paulo/repositories/3d_graphics_programming/PYTHON/15/3d_renderer\"; $env:SDL_VIDEODRIVER=\"dummy\"; $env:RENDERER_MAX_FRAMES=\"90\"; $env:RENDERER_SAVE_FRAME=\"C:/Users/paulo/AppData/Local/Temp/claude/c--Users-paulo-repositories-3d-graphics-programming/3d2335da-ef50-4e6a-aced-1a3861f0dbc1/scratchpad/frames/step15.png\"; $t = Measure-Command { py -3.12 main.py > \"$env:TEMP\\\\step15_out.txt\" 2> \"$env:TEMP\\\\step15_err.txt\"; $script:code = $LASTEXITCODE }; \"EXITCODE=$script:code\"; \"SECONDS=$\\($t.TotalSeconds\\)\"; \"--- STDOUT ---\"; Get-Content \"$env:TEMP\\\\step15_out.txt\"; \"--- STDERR ---\"; Get-Content \"$env:TEMP\\\\step15_err.txt\")",
+      "PowerShell(Set-Location \"c:/Users/paulo/repositories/3d_graphics_programming/PYTHON/21/3d_renderer\"; $env:SDL_VIDEODRIVER='dummy'; $env:RENDERER_MAX_FRAMES='90'; $env:RENDERER_SAVE_FRAME='C:/Users/paulo/AppData/Local/Temp/claude/c--Users-paulo-repositories-3d-graphics-programming/3d2335da-ef50-4e6a-aced-1a3861f0dbc1/scratchpad/frames/step21.png'; $t = Measure-Command { py -3.12 main.py > run_stdout.txt; $script:code = $LASTEXITCODE }; \"EXIT=$script:code\"; \"SECONDS=$\\($t.TotalSeconds\\)\"; Get-Content run_stdout.txt)"
+    ]
+  }
+}

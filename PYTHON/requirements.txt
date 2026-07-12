@@ -1,0 +1,9 @@
+# Shared dependencies for every step in the PYTHON/ mirror.
+# Install once:  py -3.12 -m pip install -r requirements.txt
+#
+# pygame  — window, input, and final blit to screen (SDL2, the same library
+#           the C originals use directly)
+# numpy   — the color buffer, z-buffer, and every vectorized rasterization
+#           routine (replaces the C per-pixel loops)
+pygame>=2.6
+numpy>=1.26
