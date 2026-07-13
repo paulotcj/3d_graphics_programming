@@ -1,0 +1,170 @@
+"""main.py — mirrors src/main.c of C step 11.
+
+Step 11 makes the 9x9x9 point cloud from step 10 visible: ``project()`` now
+multiplies x and y by ``fov_factor`` (128), spreading the -1..1 coordinates
+across the screen. The result is a filled square of yellow 4x4 rectangles —
+a flat, *orthographic* view of the cube: points at every depth land on the
+same screen position, so the cloud still looks 2D. Perspective (divide by z)
+arrives in step 12.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+
+import numpy as np
+import pygame
+
+import hud
+
+import display
+from display import (
+    clear_color_buffer,
+    destroy_window,
+    draw_grid,
+    draw_rect,
+    initialize_window,
+    render_color_buffer,
+)
+from vector import Vec2, Vec3, vec2_new, vec3_new
+
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+]
+hud.init_hud(KEY_BINDINGS)
+FPS: int = 60  # CONVENTIONS.md §7 frame cap (the C step 10 loop is uncapped; see README)
+
+###############################################################################
+# Declare an array of vectors/points
+###############################################################################
+N_POINTS: int = 9 * 9 * 9
+
+cube_points: list[Vec3] = []  # C: vec3_t cube_points[N_POINTS] — 9x9x9 cube
+projected_points: list[Vec2] = []  # C: vec2_t projected_points[N_POINTS]
+
+fov_factor: float = 128
+
+is_running: bool = False
+
+
+def setup() -> None:
+    """Allocate the color buffer and build the 9x9x9 point cloud.
+
+    Mirrors setup() in main.c: after allocating the buffer, three nested
+    loops walk x, y, z from -1 to 1 in steps of 0.25 (9 values per axis) and
+    store a vec3 for every combination. np.arange replaces the C float
+    loops; the visiting order (x outer, z inner) is identical.
+    """
+    display.color_buffer = np.zeros(
+        (display.window_height, display.window_width), dtype=np.uint32
+    )
+
+    # From -1 to 1 (in this 9x9x9 cube)
+    axis = np.arange(-1.0, 1.0 + 0.25, 0.25)  # [-1, -0.75, ..., 1] — 9 values
+    for x in axis:
+        for y in axis:
+            for z in axis:
+                cube_points.append(vec3_new(x, y, z))
+
+
+def process_input() -> None:
+    """Handle quit and ESC.
+
+    The C code polls a single event per frame (``SDL_PollEvent`` once),
+    which makes input laggy when events queue up. Draining the whole queue
+    with a loop is a documented allowed fix (CONVENTIONS.md §10).
+    """
+    global is_running
+    for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
+        if event.type == pygame.QUIT:
+            is_running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                is_running = False
+
+
+###############################################################################
+# Function that receives a 3D vector and returns a projected 2D point
+###############################################################################
+def project(point: Vec3) -> Vec2:
+    """Project a 3D point to 2D by scaling x and y with the FOV factor.
+
+    Mirrors project() in main.c (step 11's version): an *orthographic*
+    projection — z is still ignored, but multiplying by fov_factor (128)
+    spreads the -1..1 model coordinates over the screen.
+    """
+    return vec2_new(fov_factor * point[0], fov_factor * point[1])
+
+
+def update() -> None:
+    """Project every cube point into projected_points (mirrors update())."""
+    projected_points.clear()
+    for point in cube_points:
+        projected_point = project(point)
+        projected_points.append(projected_point)
+
+
+def render() -> None:
+    """Draw the dot grid and a 4x4 rectangle per projected point, then present."""
+    draw_grid()
+
+    # Loop all projected points and render them, offset to the screen center
+    for projected_point in projected_points:
+        draw_rect(
+            int(projected_point[0]) + (display.window_width // 2),
+            int(projected_point[1]) + (display.window_height // 2),
+            4,
+            4,
+            0xFFFFFF00,
+        )
+
+    render_color_buffer()
+
+    clear_color_buffer(0xFF000000)
+
+
+def main() -> None:
+    """Game loop: process_input -> update -> render, exactly as in main.c."""
+    global is_running
+
+    is_running = initialize_window(fullscreen="--fullscreen" in sys.argv)
+
+    setup()
+
+    # --- Test hooks (CONVENTIONS.md §7) — identical block in every step. ---
+    max_frames_env = os.environ.get("RENDERER_MAX_FRAMES")
+    max_frames = int(max_frames_env) if max_frames_env else None
+    save_frame_path = os.environ.get("RENDERER_SAVE_FRAME")
+    frame_count = 0
+    # -----------------------------------------------------------------------
+
+    clock = pygame.time.Clock()
+
+    while is_running:
+        process_input()
+        update()
+        render()
+
+        clock.tick(FPS)  # CONVENTIONS.md §7 frame cap (C step 10 has none)
+
+        # --- Test hooks (CONVENTIONS.md §7) ---
+        frame_count += 1
+        if max_frames is not None and frame_count >= max_frames:
+            is_running = False
+        # --------------------------------------
+
+    # --- Test hooks (CONVENTIONS.md §7): save the last presented frame. ---
+    if save_frame_path and display.window is not None:
+        pygame.image.save(display.window, save_frame_path)
+    # -----------------------------------------------------------------------
+
+    destroy_window()
+
+
+if __name__ == "__main__":
+    main()

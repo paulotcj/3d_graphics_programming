@@ -33,6 +33,15 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+]
+hud.init_hud(KEY_BINDINGS)
 # Module-level state — mirrors the globals at the top of main.c.
 is_running: bool = False
 window: pygame.Surface | None = None
@@ -116,6 +125,7 @@ def process_input() -> None:
     global is_running
 
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:
@@ -168,6 +178,7 @@ def render() -> None:
     # Remember: We are using the format alpha red green blue
     clear_color_buffer(0xFFFFFF00)
 
+    hud.draw(window)  # on-screen key help (H)
     pygame.display.flip()
 
 

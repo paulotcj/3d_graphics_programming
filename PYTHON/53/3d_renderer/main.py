@@ -1,4 +1,4 @@
-"""main.py — mirrors src/main.c (step 52: triangles from the clipped polygon).
+"""main.py — mirrors src/main.c (step 53: triangles from the clipped polygon).
 
 The game loop: process_input -> update -> render, at 60 FPS. NEW in this
 step, the clipped polygon is finally broken back into triangles with
@@ -33,6 +33,8 @@ import sys
 
 import numpy as np
 import pygame
+
+import hud
 
 import display
 import texture
@@ -88,6 +90,25 @@ from vector import (
     vec4_from_vec3,
 )
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+    ("1", "wireframe + vertex markers"),
+    ("2", "wireframe"),
+    ("3", "filled triangles"),
+    ("4", "filled + wireframe"),
+    ("5", "textured"),
+    ("6", "textured + wireframe"),
+    ("C", "backface culling ON"),
+    ("X", "backface culling OFF"),
+    ("Up", "move camera up"),
+    ("Down", "move camera down"),
+    ("A", "turn camera left"),
+    ("D", "turn camera right"),
+]
+hud.init_hud(KEY_BINDINGS)
 # Asset paths are resolved against this file, not the working directory
 # (CONVENTIONS.md §7), so `python main.py` works from anywhere.
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -144,15 +165,21 @@ def setup() -> None:
         (display.window_height, display.window_width), dtype=np.float32
     )
 
-    # Initialize the perspective projection matrix
-    fov = 3.141592 / 3.0  # the same as 180/3, or 60deg
-    aspect = display.window_height / display.window_width
+    # Initialize the perspective projection matrix.
+    # NEW in step 53: the vertical fov (fov_y) is the classic 60 degrees, and
+    # the horizontal fov (fov_x) is derived from it through the aspect ratio
+    # — atan(tan(fov_y/2) * aspect_x) * 2 — so the left/right frustum planes
+    # can finally match the screen's real proportions.
+    aspect_y = display.window_height / display.window_width
+    aspect_x = display.window_width / display.window_height
+    fov_y = 3.141592 / 3.0  # the same as 180/3, or 60deg
+    fov_x = math.atan(math.tan(fov_y / 2) * aspect_x) * 2
     z_near = 1.0
     z_far = 20.0
-    proj_matrix = mat4_make_perspective(fov, aspect, z_near, z_far)
+    proj_matrix = mat4_make_perspective(fov_y, aspect_y, z_near, z_far)
 
     # Initialize frustum planes with a point and a normal
-    init_frustum_planes(fov, z_near, z_far)
+    init_frustum_planes(fov_x, fov_y, z_near, z_far)
 
     # Loads the vertex and face values for the mesh data structure
     load_obj_file_data(os.path.join(ASSETS_DIR, "cube.obj"))
@@ -181,6 +208,7 @@ def process_input() -> None:
     global is_running
 
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:

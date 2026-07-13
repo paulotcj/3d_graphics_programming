@@ -1,14 +1,16 @@
-"""main.py — mirrors src/main.c of C step 9.
+"""main.py — mirrors src/main.c of C step 10.
 
-Step 9 refactors step 8 without changing what is drawn: the window globals
-and all drawing helpers move out of main.c into a new display.c/display.h
-pair (here: ``display.py``). main.c keeps only the game loop — setup,
-process_input, update, render — and calls into the display module. The image
-is identical to step 8: a gray 10-pixel dot grid with a solid magenta
-300x150 rectangle at (300, 200).
+Step 10 puts the first *3D data* on screen: a 9x9x9 cloud of points filling
+the cube from -1 to 1 on every axis (729 ``vec3_t`` values). Each frame,
+``update()`` runs every point through ``project()`` — which at this step
+simply drops the z coordinate (no perspective yet) — and ``render()`` draws a
+4x4 yellow rectangle at each projected position, offset to the screen center.
+Because the raw coordinates only span -1..1 and nothing scales them up yet,
+all 729 squares overlap in a tiny yellow blob at the center of the screen —
+step 11 adds the ``fov_factor`` scaling that spreads them out.
 
-See display.py for the pixel-format trick (CONVENTIONS.md §4) and the NumPy
-replacements for every per-pixel C loop (CONVENTIONS.md §5).
+New files mirrored from C: ``vector.py`` (vec2_t/vec3_t) and the
+``draw_pixel()`` helper in ``display.py``.
 """
 
 from __future__ import annotations
@@ -19,6 +21,8 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
 import display
 from display import (
     clear_color_buffer,
@@ -28,25 +32,48 @@ from display import (
     initialize_window,
     render_color_buffer,
 )
+from vector import Vec2, Vec3, vec2_new, vec3_new
 
-FPS: int = 60  # CONVENTIONS.md §7 frame cap (the C step 9 loop is uncapped; see README)
 
-# Module-level state — mirrors the lone global left at the top of main.c.
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+]
+hud.init_hud(KEY_BINDINGS)
+FPS: int = 60  # CONVENTIONS.md §7 frame cap (the C step 10 loop is uncapped; see README)
+
+###############################################################################
+# Declare an array of vectors/points
+###############################################################################
+N_POINTS: int = 9 * 9 * 9
+
+cube_points: list[Vec3] = []  # C: vec3_t cube_points[N_POINTS] — 9x9x9 cube
+projected_points: list[Vec2] = []  # C: vec2_t projected_points[N_POINTS]
+
+fov_factor: float = 128
+
 is_running: bool = False
 
 
 def setup() -> None:
-    """Allocate the color buffer (C: malloc + SDL_CreateTexture).
+    """Allocate the color buffer and build the 9x9x9 point cloud.
 
-    As in C — where main.c's setup() assigns the ``extern`` color_buffer
-    declared in display.h — the buffer lives in the display module but is
-    allocated here. pygame needs no explicit streaming texture:
-    ``render_color_buffer`` builds a surface straight from the buffer bytes
-    every frame.
+    Mirrors setup() in main.c: after allocating the buffer, three nested
+    loops walk x, y, z from -1 to 1 in steps of 0.25 (9 values per axis) and
+    store a vec3 for every combination. np.arange replaces the C float
+    loops; the visiting order (x outer, z inner) is identical.
     """
     display.color_buffer = np.zeros(
         (display.window_height, display.window_width), dtype=np.uint32
     )
+
+    # From -1 to 1 (in this 9x9x9 cube)
+    axis = np.arange(-1.0, 1.0 + 0.25, 0.25)  # [-1, -0.75, ..., 1] — 9 values
+    for x in axis:
+        for y in axis:
+            for z in axis:
+                cube_points.append(vec3_new(x, y, z))
 
 
 def process_input() -> None:
@@ -58,6 +85,7 @@ def process_input() -> None:
     """
     global is_running
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:
@@ -65,22 +93,43 @@ def process_input() -> None:
                 is_running = False
 
 
+###############################################################################
+# Function that receives a 3D vector and returns a projected 2D point
+###############################################################################
+def project(point: Vec3) -> Vec2:
+    """Project a 3D point to 2D — at this step, by simply dropping z.
+
+    Mirrors project() in main.c (step 10's version: a straight pass-through
+    of x and y). Perspective comes later; this is the "no projection at all"
+    baseline the course improves on.
+    """
+    return vec2_new(point[0], point[1])
+
+
 def update() -> None:
-    """Nothing to update yet (C: an empty TODO body)."""
+    """Project every cube point into projected_points (mirrors update())."""
+    projected_points.clear()
+    for point in cube_points:
+        projected_point = project(point)
+        projected_points.append(projected_point)
 
 
 def render() -> None:
-    """Draw one frame: grid + magenta rect, present, then clear for the next."""
-    assert display.window is not None
-    # C: SDL_SetRenderDrawColor(0,0,0,255) + SDL_RenderClear. The full-window
-    # blit in render_color_buffer overwrites everything anyway; kept for parity.
-    display.window.fill((0, 0, 0))
-
+    """Draw the dot grid and a 4x4 rectangle per projected point, then present."""
     draw_grid()
 
-    draw_rect(300, 200, 300, 150, 0xFFFF00FF)
+    # Loop all projected points and render them, offset to the screen center
+    for projected_point in projected_points:
+        draw_rect(
+            int(projected_point[0]) + (display.window_width // 2),
+            int(projected_point[1]) + (display.window_height // 2),
+            4,
+            4,
+            0xFFFFFF00,
+        )
 
     render_color_buffer()
+
     clear_color_buffer(0xFF000000)
 
 
@@ -106,7 +155,7 @@ def main() -> None:
         update()
         render()
 
-        clock.tick(FPS)  # CONVENTIONS.md §7 frame cap (C step 9 has none)
+        clock.tick(FPS)  # CONVENTIONS.md §7 frame cap (C step 10 has none)
 
         # --- Test hooks (CONVENTIONS.md §7) ---
         frame_count += 1

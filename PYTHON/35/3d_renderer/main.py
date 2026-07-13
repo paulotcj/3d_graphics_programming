@@ -1,15 +1,15 @@
 """main.py — mirrors src/main.c.
 
-Game loop for step 34 of the 3D renderer: the naive fov-factor projection
-is replaced with a real **perspective projection matrix**
-(``mat4_make_perspective`` + ``mat4_mul_vec4_project``): 60-degree fov,
-window aspect ratio, and near/far planes, with the perspective divide by w.
-The cube now rotates only around x so the new projection is easy to read.
-Faces are back-face culled, depth-sorted with the painter's algorithm, and
-drawn as wireframe / filled triangles.
-
-Pipeline per frame: process_input -> update (transform + cull + project +
-sort) -> render (rasterize the triangle list).
+Game loop for step 35 of the 3D renderer: **flat shading with a global
+directional light** (see light.py). Every face now computes its normal
+unconditionally (culling only *tests* it; lighting *uses* it): the shade is
+``-dot(normal, light.direction)`` — a face pointing straight against the
+incoming light rays is fully lit, a face at 90 degrees is black — and
+light_apply_intensity() darkens the face's base color by that factor. All
+cube faces become white so the shading is what you see. The default render
+mode switches to filled triangles, the mesh loads f22.obj (built-in cube as
+fallback), rotation slows to 0.005/frame, and projected y is flipped
+(3D y grows up, screen y grows down).
 """
 
 from __future__ import annotations
@@ -21,7 +21,10 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
 import display
+from light import light, light_apply_intensity
 import mesh
 from display import (
     CULL_BACKFACE,
@@ -53,6 +56,19 @@ from matrix import (
 from triangle import draw_filled_triangle, draw_triangle, triangle_t
 from vector import Vec3, vec3_new
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+    ("1", "wireframe + vertex markers"),
+    ("2", "wireframe"),
+    ("3", "filled triangles"),
+    ("4", "filled + wireframe"),
+    ("C", "backface culling ON"),
+    ("D", "backface culling OFF"),
+]
+hud.init_hud(KEY_BINDINGS)
 ###############################################################################
 # Array of triangles that should be rendered frame by frame
 ###############################################################################
@@ -84,7 +100,7 @@ def setup() -> None:
     global proj_matrix
 
     # Initialize render mode and triangle culling method
-    display.render_method = RENDER_WIRE
+    display.render_method = RENDER_FILL_TRIANGLE
     display.cull_method = CULL_BACKFACE
 
     # (The color buffer is allocated in initialize_window — display.py owns
@@ -98,8 +114,8 @@ def setup() -> None:
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar)
 
     # Loads the vertex and face values for the mesh data structure
-    mesh.load_cube_mesh_data()
-    # mesh.load_obj_file_data(os.path.join(os.path.dirname(__file__), "assets", "cube.obj"))
+    # mesh.load_cube_mesh_data()
+    mesh.load_obj_file_data(os.path.join(os.path.dirname(__file__), "assets", "f22.obj"))
 
 
 ###############################################################################
@@ -113,6 +129,7 @@ def process_input() -> None:
     """
     global is_running
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:
@@ -148,7 +165,7 @@ def update() -> None:
     triangles_to_render = []
 
     # Change the mesh scale, rotation, and translation values per animation frame
-    mesh.mesh.rotation[0] += 0.01
+    mesh.mesh.rotation[0] += 0.005
     # mesh.mesh.rotation[1] += 0.01
     # mesh.mesh.rotation[2] += 0.01
     mesh.mesh.translation[2] = 5.0
@@ -187,28 +204,32 @@ def update() -> None:
             [mesh_face.a - 1, mesh_face.b - 1, mesh_face.c - 1]
         ]
 
+        # Get individual vectors from A, B, and C vertices to compute normal.
+        # Step 35 moves this OUT of the culling if-block: lighting needs the
+        # normal even when culling is turned off.
+        vector_a = transformed_vertices[0][:3]  # /*   A   */
+        vector_b = transformed_vertices[1][:3]  # /*  / \  */
+        vector_c = transformed_vertices[2][:3]  # /* C---B */
+
+        # Get the vector subtraction of B-A and C-A
+        vector_ab = vector_b - vector_a
+        vector_ac = vector_c - vector_a
+
+        # Compute the face normal and normalize it (unlike the pure sign test
+        # of the culling steps, lighting DOES care about the length: the dot
+        # product below must land in -1..1, which needs unit vectors)
+        normal = np.cross(vector_ab, vector_ac)  # vec3_cross
+        normal /= np.linalg.norm(normal)         # vec3_normalize
+
+        # Find the vector between vertex A in the triangle and the camera origin
+        camera_ray = camera_position - vector_a
+
+        # Calculate how aligned the camera ray is with the face normal (using dot product)
+        dot_normal_camera = float(np.dot(normal, camera_ray))  # vec3_dot
+
         # Backface culling test to see if the current face should be projected
         if display.cull_method == CULL_BACKFACE:
-            vector_a = transformed_vertices[0][:3]  # /*   A   */
-            vector_b = transformed_vertices[1][:3]  # /*  / \  */
-            vector_c = transformed_vertices[2][:3]  # /* C---B */
-
-            # Get the vector subtraction of B-A and C-A (the C code also
-            # normalizes these; normalization only changes the normal's
-            # length, not its sign, so the dot-product test is identical)
-            vector_ab = vector_b - vector_a
-            vector_ac = vector_c - vector_a
-
-            # Compute the face normal (using cross product to find perpendicular)
-            normal = np.cross(vector_ab, vector_ac)  # vec3_cross
-
-            # Find the vector between vertex A in the triangle and the camera origin
-            camera_ray = camera_position - vector_a
-
-            # Calculate how aligned the camera ray is with the face normal (using dot product)
-            dot_normal_camera = float(np.dot(normal, camera_ray))  # vec3_dot
-
-            # Bypass the triangles that are looking away from the camera
+            # Backface culling, bypassing triangles that are looking away from the camera
             if dot_normal_camera < 0:
                 continue
 
@@ -218,6 +239,10 @@ def update() -> None:
         for j in range(3):
             # Project the current vertex (perspective matrix + divide by w)
             projected_point = mat4_mul_vec4_project(proj_matrix, transformed_vertices[j])
+
+            # Flip vertically since the y values of the 3D mesh grow bottom->up
+            # and in screen space y values grow top->down
+            projected_point[1] *= -1
 
             # Scale into the view (NDC [-1, 1] -> half the screen size)
             projected_point[0] *= display.window_width / 2.0
@@ -236,10 +261,18 @@ def update() -> None:
             + transformed_vertices[2][2]
         ) / 3.0
 
+        # Calculate the shade intensity based on how aligned the face normal
+        # is with the *opposite* of the light direction (a face whose normal
+        # points against the incoming rays is the lit one)
+        light_intensity_factor = -float(np.dot(normal, light.direction))
+
+        # Calculate the triangle color based on the light angle
+        triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor)
+
         # Keep only x and y for the 2-D triangle points (as the C struct does)
         projected_triangle = triangle_t(
             points=np.array([p[:2] for p in projected_points], dtype=np.float64),
-            color=mesh_face.color,
+            color=triangle_color,
             avg_depth=avg_depth,
         )
 

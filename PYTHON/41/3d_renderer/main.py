@@ -1,15 +1,11 @@
 """main.py — mirrors src/main.c.
 
-Game loop for step 40 of the 3D renderer: **flipped V texture coordinates**.
-The only change from step 39 lives in mesh.py — every UV in the cube face
-table has its V component flipped (v -> 1 - v) so the top-down-stored
-red-brick texture maps upright. The loop itself is unchanged: projected
-vertices keep their full (x, y, z, w) and the textured rasterizer does
-perspective-correct u/w, v/w, 1/w interpolation. The cube spins slowly
-around y only.
-
-Pipeline per frame: process_input -> update (transform + cull + light +
-project + painter's-algorithm sort) -> render (rasterize the triangle list).
+Game loop for step 41 of the 3D renderer: **PNG textures**. The hard-coded
+red-brick array is gone — setup() now loads ./assets/cube.png from disk. In
+C this took bundling the 1,281-line uPNG decoder (upng.c) and switching the
+SDL window texture to RGBA32 to match its byte order; in Python the whole
+step is one pygame.image.load call (see texture.py). The default render
+mode also changes to filled triangles.
 """
 
 from __future__ import annotations
@@ -20,6 +16,8 @@ import sys
 
 import numpy as np
 import pygame
+
+import hud
 
 import display
 import mesh
@@ -54,7 +52,7 @@ from matrix import (
     mat4_mul_mat4,
     mat4_mul_vec4_project,
 )
-from texture import REDBRICK_TEXTURE, tex2_t
+from texture import tex2_t
 from triangle import (
     draw_filled_triangle,
     draw_textured_triangle,
@@ -63,6 +61,21 @@ from triangle import (
 )
 from vector import Vec3, vec3_new
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+    ("1", "wireframe + vertex markers"),
+    ("2", "wireframe"),
+    ("3", "filled triangles"),
+    ("4", "filled + wireframe"),
+    ("5", "textured"),
+    ("6", "textured + wireframe"),
+    ("C", "backface culling ON"),
+    ("D", "backface culling OFF"),
+]
+hud.init_hud(KEY_BINDINGS)
 ###############################################################################
 # Array of triangles that should be rendered frame by frame
 ###############################################################################
@@ -94,7 +107,7 @@ def setup() -> None:
     global proj_matrix
 
     # Initialize render mode and triangle culling method
-    display.render_method = RENDER_TEXTURED_WIRE
+    display.render_method = RENDER_FILL_TRIANGLE
     display.cull_method = CULL_BACKFACE
 
     # (The color buffer is allocated in initialize_window — display.py owns
@@ -108,7 +121,11 @@ def setup() -> None:
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar)
 
     # Manually load the hardcoded texture data from the static array
-    texture.mesh_texture = REDBRICK_TEXTURE
+    # Load the texture information from an external PNG file
+    # (C: load_png_texture_data("./assets/cube.png") via uPNG)
+    texture.load_png_texture_data(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "cube.png")
+    )
     texture.texture_width = 64
     texture.texture_height = 64
 
@@ -128,6 +145,7 @@ def process_input() -> None:
     """
     global is_running
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:
@@ -331,6 +349,9 @@ def render() -> None:
             )
 
         # Draw triangle vertex points
+        # Color note: main.c writes 0xFF0000FF, which the C's new RGBA32
+        # window format shows as RED; our buffer is true ARGB, so red is
+        # 0xFFFF0000 — same on-screen result.
         if display.render_method == RENDER_WIRE_VERTEX:
             draw_rect(int(triangle.points[0][0]) - 3, int(triangle.points[0][1]) - 3, 6, 6, 0xFFFF0000)  # vertex A
             draw_rect(int(triangle.points[1][0]) - 3, int(triangle.points[1][1]) - 3, 6, 6, 0xFFFF0000)  # vertex B
@@ -345,7 +366,7 @@ def render() -> None:
 # Free the memory that was dynamically allocated by the program
 ###############################################################################
 def free_resources() -> None:
-    """C parity: free the color buffer and mesh arrays (Python GC handles it)."""
+    """C parity: free buffers, meshes, and the PNG (C: upng_free(png_texture))."""
     mesh.mesh.faces.clear()
     mesh.mesh.vertices.clear()
 

@@ -1,71 +1,49 @@
-# Step 9 — Splitting out display.c
+# Step 10 — Vectors and a 3D point cloud cube
 
-This step is a pure refactor with zero visual change: the window/renderer
-globals and all drawing helpers move out of `main.c` into a new
-`display.c`/`display.h` pair, leaving `main.c` with just the game loop. The
-image is identical to step 8: a gray 10-pixel dot grid with a solid magenta
-300x150 rectangle at (300, 200).
+The first 3D data in the program. A new `vector.py` (mirroring `vector.h`'s
+`vec2_t`/`vec3_t`) defines the vector types, and `main.py` builds a **9×9×9
+cloud of 729 points** filling the cube from −1 to 1 on each axis. Every frame
+each point is run through `project()` — which at this step just drops the z
+coordinate — and drawn as a 4×4 yellow square offset to the screen center.
 
-## What changed vs step 8
+Don't expect much on screen yet: the raw coordinates only span −1..1 and
+nothing scales them up, so all 729 squares overlap in a **tiny yellow blob**
+at the center — identical to what the C step shows. Step 11 adds the
+`fov_factor` scaling that spreads the cloud out.
 
-Derived from the actual C diff (`8/3d_renderer/src` → `9/3d_renderer/src`):
+## What changed vs step 9
 
-- New files `display.c` and `display.h`. Moved into them, unchanged in
-  behavior: the globals `window`, `renderer`, `color_buffer`,
-  `color_buffer_texture`, `window_width`, `window_height`, and the functions
-  `initialize_window`, `draw_grid`, `draw_rect`, `render_color_buffer`,
-  `clear_color_buffer`, `destroy_window`.
-- `main.c` now `#include "display.h"` and keeps only `is_running`, `setup`
-  (which still allocates the buffer/texture declared in display.h),
-  `process_input`, `update`, `render`, and `main`.
-- No drawing or behavior change of any kind.
-
-The Python port mirrors the split: the same functions and globals move from
-`main.py` into a new `display.py`; `main.py`'s `setup()` still allocates
-`display.color_buffer`, exactly like main.c assigning the `extern` buffer.
+- New `vector.c`/`vector.h` → [vector.py](vector.py): `vec2_t`, `vec3_t`
+  (numpy-array based here, with `vec2_new`/`vec3_new` constructors).
+- `display.c` gained `draw_pixel(x, y, color)` with a bounds check;
+  `draw_rect` now writes through it → mirrored in [display.py](display.py)
+  (the slice clamp is the same check applied to the whole rect at once).
+- `main.c`: `cube_points`/`projected_points` arrays, `fov_factor = 128`
+  (unused until step 11), `project()`, point projection in `update()`, and
+  per-point rectangles in `render()` (color `0xFFFFFF00`).
 
 ## Run it
 
 ```
-py -3.12 main.py                # 800x600 window (default)
-py -3.12 main.py --fullscreen   # desktop-resolution borderless, like the C code
+cd PYTHON/10/3d_renderer
+py -3.12 main.py               # 800x600 window
+py -3.12 main.py --fullscreen  # borderless desktop-resolution, like the C
 ```
 
-| Key | Action |
-|-----|--------|
-| ESC | Quit   |
-
-Test hooks (CONVENTIONS.md §7): `RENDERER_MAX_FRAMES=<n>` exits after n
-frames; `RENDERER_SAVE_FRAME=<path.png>` saves the final frame;
-`SDL_VIDEODRIVER=dummy` runs headless.
+`ESC` or closing the window quits.
 
 ## File map
 
-| C file          | Python file  | Notes |
-|-----------------|--------------|-------|
-| `src/main.c`    | `main.py`    | Game loop only, as in C. |
-| `src/display.c` | `display.py` | Window, color buffer, drawing helpers. |
-| `src/display.h` | —            | Not needed — Python imports replace the header. |
-
-No `array.c`/`swap.c`/`upng.c` exist yet at this step, and there are no assets.
+| C file      | Python file  | Notes                                 |
+|-------------|--------------|----------------------------------------|
+| `main.c`    | `main.py`    | game loop + point cloud + projection  |
+| `display.c/.h` | `display.py` | window, buffer, drawing helpers    |
+| `vector.c/.h`  | `vector.py`  | vec2/vec3 types (math comes later) |
+| `Makefile`  | —            | nothing to compile                    |
 
 ## Performance notes
 
-Unchanged from step 8 (the C change is a pure file split):
-
-- `clear_color_buffer`: full-buffer double loop → one broadcast assignment
-  `color_buffer[:] = color`.
-- `draw_grid`: modulo/step loop → one strided slice `color_buffer[::10, ::10]`.
-- `draw_rect`: width x height double loop → one 2-D slice assignment (bounds
-  clamped to the screen; the C code has no clamp but its single call site fits
-  on screen).
-
-## Deviations (per CONVENTIONS.md §7 and §10)
-
-- Windowed 800x600 by default; `--fullscreen` restores the C behavior.
-- Input: the C code polls a single event per frame (laggy); the port drains
-  the whole event queue each frame.
-- Frame cap: the C step 9 loop is uncapped; the port adds the standard
-  `clock.tick(60)` from the runtime contract.
-- `render_color_buffer` converts the presented surface to drop per-pixel
-  alpha, matching SDL's no-blending texture copy.
+729 points is tiny; the per-point Python loop mirrors the C exactly and still
+renders at the 60 FPS cap. The heavy operations (grid, rect fills, clear,
+present) are the vectorized numpy routines in `display.py`
+(CONVENTIONS.md §5).

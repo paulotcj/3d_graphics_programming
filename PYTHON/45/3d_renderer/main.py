@@ -27,6 +27,8 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
 import display
 from display import (
     FPS,
@@ -58,6 +60,21 @@ from texture import load_png_texture_data, tex2_t
 from triangle import draw_filled_triangle, draw_textured_triangle, draw_triangle, triangle_t
 from vector import vec3_cross, vec3_dot, vec3_from_vec4, vec3_normalize, vec3_sub
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+    ("1", "wireframe + vertex markers"),
+    ("2", "wireframe"),
+    ("3", "filled triangles"),
+    ("4", "filled + wireframe"),
+    ("5", "textured"),
+    ("6", "textured + wireframe"),
+    ("C", "backface culling ON"),
+    ("D", "backface culling OFF"),
+]
+hud.init_hud(KEY_BINDINGS)
 # Asset paths are resolved against this file, not the working directory
 # (CONVENTIONS.md §7), so `python main.py` works from anywhere.
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -125,6 +142,7 @@ def process_input() -> None:
     """
     global is_running
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:

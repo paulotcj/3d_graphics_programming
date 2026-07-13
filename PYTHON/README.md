@@ -35,9 +35,12 @@ cd PYTHON/<step>/3d_renderer
 py -3.12 main.py
 ```
 
+- **Press `H` in any step's window for the on-screen key guide** — a panel
+  listing every key that step handles and what it does (a small
+  "H — controls" hint always sits in the bottom-left corner).
 - `ESC` quits. Later steps add render-mode keys (`1`–`6`), culling toggles
-  (`c`/`x`), and camera controls (`W`/`S`, arrow keys) — each step's README
-  lists exactly what it supports.
+  (`c`/`x`), and camera controls (`W`/`S`, arrow keys) — the H panel and
+  each step's README list exactly what that step supports.
 - Default is an 800×600 window (the C used a borderless fullscreen window;
   windowed is friendlier for development). Steps that support it accept
   `--fullscreen`.
@@ -52,22 +55,27 @@ Every graphical step honors three environment variables:
 | `RENDERER_SAVE_FRAME=path.png` | save the final frame to a PNG on exit |
 | `SDL_VIDEODRIVER=dummy` | run without any window (headless) |
 
-## ⚠️ About the missing `.obj` models
+## ⚠️ About the `.obj` models
 
 The original repo ships only PNG **textures** — the `.obj` **mesh files** the
 C code references from step 22 onward (`cube.obj`, `f22.obj`, `efa.obj`,
 `f117.obj`, `crab.obj`, `drone.obj`, `runway.obj`) were never committed, so
-those C steps cannot actually load their models as published.
+the C steps as published cannot actually load their models.
 
-The Python mirror handles this gracefully:
+The Python mirror fixes this so every step shows a real scene:
 
-- `assets/cube.obj` is **generated** (from the cube hard-coded in the C's
-  `mesh.c`), so the OBJ parser is genuinely exercised.
-- Any other missing `.obj` prints a one-line warning and **falls back to the
-  built-in cube**, textured with that model's own PNG — every step runs out
-  of the box.
-- Drop the original course `.obj` files into a step's `assets/` folder and
-  they load exactly as in C.
+- `assets/cube.obj` is generated from the cube hard-coded in the C's
+  `mesh.c`, so the OBJ parser is genuinely exercised.
+- The six missing models were **generated as stand-ins** — low-poly but
+  recognizable jets (F-22, F-117, EFA), a crab, a quadcopter drone, and a
+  runway — with the same clockwise winding and UV conventions the course
+  cube uses, so culling, shading, clipping, and texturing all behave
+  exactly as the lessons intend. The final steps render a full runway scene
+  with jets parked on it.
+- Have the original course models? Drop them into any step's `assets/`
+  folder and they replace the stand-ins as-is.
+- If a model file is deleted, the loader still prints a warning and falls
+  back to the built-in cube — nothing ever crashes over an asset.
 
 ## The journey — step by step
 

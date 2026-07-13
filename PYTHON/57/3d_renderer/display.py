@@ -24,6 +24,8 @@ from __future__ import annotations
 import numpy as np
 import pygame
 
+import hud
+
 FPS: int = 60
 FRAME_TARGET_TIME: int = 1000 // FPS  # kept for parity; pygame's Clock does the waiting
 
@@ -218,6 +220,7 @@ def render_color_buffer() -> None:
     if window.get_size() != (window_width, window_height):
         surface = pygame.transform.scale(surface, window.get_size())
     window.blit(surface, (0, 0))
+    hud.draw(window)  # on-screen key help (H)
     pygame.display.flip()
 
 

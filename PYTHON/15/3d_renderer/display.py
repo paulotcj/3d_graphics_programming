@@ -18,6 +18,8 @@ from __future__ import annotations
 import numpy as np
 import pygame
 
+import hud
+
 # Module-level state — mirrors the globals at the top of display.c.
 window: pygame.Surface | None = None
 color_buffer: np.ndarray | None = None  # (h, w) uint32, 0xAARRGGBB
@@ -112,6 +114,7 @@ def render_color_buffer() -> None:
         color_buffer.tobytes(), (window_width, window_height), "BGRA"
     )
     window.blit(surface, (0, 0))
+    hud.draw(window)  # on-screen key help (H)
     pygame.display.flip()
 
 

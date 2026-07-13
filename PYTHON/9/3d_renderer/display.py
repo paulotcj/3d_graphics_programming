@@ -23,6 +23,8 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
 # Module-level state — mirrors the globals at the top of display.c
 # (declared `extern` in display.h so main.c can see them). Note that
 # color_buffer is *allocated* by main.py's setup(), just as in the C code.
@@ -102,6 +104,7 @@ def render_color_buffer() -> None:
         color_buffer.tobytes(), (window_width, window_height), "BGRA"
     ).convert()
     window.blit(surface, (0, 0))
+    hud.draw(window)  # on-screen key help (H)
     pygame.display.flip()
 
 

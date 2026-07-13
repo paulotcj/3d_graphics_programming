@@ -52,23 +52,23 @@ cube_vertices: list[Vec3] = [
 
 cube_faces: list[face_t] = [
     # front
-    face_t(a=1, b=2, c=3, color=0xFFFF0000),
-    face_t(a=1, b=3, c=4, color=0xFFFF0000),
+    face_t(a=1, b=2, c=3, color=0xFFFFFFFF),
+    face_t(a=1, b=3, c=4, color=0xFFFFFFFF),
     # right
-    face_t(a=4, b=3, c=5, color=0xFF00FF00),
-    face_t(a=4, b=5, c=6, color=0xFF00FF00),
+    face_t(a=4, b=3, c=5, color=0xFFFFFFFF),
+    face_t(a=4, b=5, c=6, color=0xFFFFFFFF),
     # back
-    face_t(a=6, b=5, c=7, color=0xFF0000FF),
-    face_t(a=6, b=7, c=8, color=0xFF0000FF),
+    face_t(a=6, b=5, c=7, color=0xFFFFFFFF),
+    face_t(a=6, b=7, c=8, color=0xFFFFFFFF),
     # left
-    face_t(a=8, b=7, c=2, color=0xFFFFFF00),
-    face_t(a=8, b=2, c=1, color=0xFFFFFF00),
+    face_t(a=8, b=7, c=2, color=0xFFFFFFFF),
+    face_t(a=8, b=2, c=1, color=0xFFFFFFFF),
     # top
-    face_t(a=2, b=7, c=5, color=0xFFFF00FF),
-    face_t(a=2, b=5, c=3, color=0xFFFF00FF),
+    face_t(a=2, b=7, c=5, color=0xFFFFFFFF),
+    face_t(a=2, b=5, c=3, color=0xFFFFFFFF),
     # bottom
-    face_t(a=6, b=8, c=1, color=0xFF00FFFF),
-    face_t(a=6, b=1, c=4, color=0xFF00FFFF),
+    face_t(a=6, b=8, c=1, color=0xFFFFFFFF),
+    face_t(a=6, b=1, c=4, color=0xFFFFFFFF),
 ]
 
 

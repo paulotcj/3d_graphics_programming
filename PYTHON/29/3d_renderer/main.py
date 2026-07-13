@@ -18,6 +18,8 @@ import sys
 
 import pygame
 
+import hud
+
 import display
 import mesh
 from triangle import draw_filled_triangle, draw_triangle, triangle_t
@@ -35,6 +37,19 @@ from vector import (
     vec3_sub,
 )
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+    ("1", "wireframe + vertex markers"),
+    ("2", "wireframe"),
+    ("3", "filled triangles"),
+    ("4", "filled + wireframe"),
+    ("C", "backface culling ON"),
+    ("D", "backface culling OFF"),
+]
+hud.init_hud(KEY_BINDINGS)
 ###############################################################################
 # Array of triangles that should be rendered frame by frame
 ###############################################################################
@@ -95,6 +110,7 @@ def process_input() -> None:
     """
     global is_running
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:

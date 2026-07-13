@@ -18,6 +18,8 @@ from __future__ import annotations
 import numpy as np
 import pygame
 
+import hud
+
 # Frame-rate cap — mirrors the new #defines in display.h (step 16):
 #   #define FPS 60
 #   #define FRAME_TARGET_TIME (1000 / FPS)
@@ -118,6 +120,7 @@ def render_color_buffer() -> None:
         color_buffer.tobytes(), (window_width, window_height), "BGRA"
     )
     window.blit(surface, (0, 0))
+    hud.draw(window)  # on-screen key help (H)
     pygame.display.flip()
 
 

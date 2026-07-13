@@ -1,10 +1,11 @@
-"""Step 17 — SDL_Delay instead of busy-wait (mirrors src/main.c).
+"""Step 18 — triangle meshes: vertices and faces (mirrors src/main.c).
 
-Same spinning 9x9x9 point cloud as step 16, with one refinement to the
-frame-rate cap: instead of busy-waiting (spinning at 100% CPU) until
-``FRAME_TARGET_TIME`` milliseconds have passed, the C code now computes how
-long is left to wait and calls ``SDL_Delay(time_to_wait)``, yielding the CPU
-to the operating system while it waits.
+The point cloud is gone. Geometry is now a **mesh**: 8 cube vertices plus 12
+faces that index into them (see mesh.py). Each frame, ``update()`` walks the
+faces, gathers each face's three vertices, rotates and translates them,
+projects them, and stores the result as a ``triangle_t``; ``render()`` then
+marks the three projected corners of every triangle with small yellow
+squares. The wireframe lines connecting them arrive in step 19.
 """
 
 from __future__ import annotations
@@ -15,15 +16,24 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
 import display
+from mesh import N_MESH_FACES, mesh_faces, mesh_vertices
+from triangle import triangle_t
 from vector import Vec2, Vec3, vec3_rotate_x, vec3_rotate_y, vec3_rotate_z
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+]
+hud.init_hud(KEY_BINDINGS)
 ###############################################################################
-# Declare an array of vectors/points
+# Array of triangles that should be rendered frame by frame
 ###############################################################################
-N_POINTS: int = 9 * 9 * 9
-cube_points: list[Vec3] = []  # 9x9x9 cube
-projected_points: list[Vec2] = []
+triangles_to_render: list[triangle_t] = [triangle_t() for _ in range(N_MESH_FACES)]
 
 camera_position: Vec3 = np.array([0.0, 0.0, -5.0], dtype=np.float64)
 cube_rotation: Vec3 = np.array([0.0, 0.0, 0.0], dtype=np.float64)
@@ -32,32 +42,16 @@ fov_factor: float = 640.0
 
 is_running: bool = False
 
-# Frame-rate cap (refined in this step): the C code keeps the global
-# ``previous_frame_time`` but replaces the step-16 busy-wait with
-# SDL_Delay(time_to_wait), sleeping instead of spinning. pygame's
-# Clock.tick(FPS) already does exactly that — it sleeps until the 60 FPS
-# target — so the Python side is unchanged; FPS and FRAME_TARGET_TIME live
-# in display.py, mirroring the #defines in display.h.
 clock: pygame.time.Clock | None = None
 
 
 def setup() -> None:
-    """Fill cube_points with the 9x9x9 grid spanning -1..1 on each axis.
+    """Nothing left to build here — the mesh is hard-coded in mesh.py.
 
-    The color buffer the C code mallocs here is allocated in
-    display.initialize_window() (pygame needs the window first).
+    (The C setup() only allocates the color buffer and texture, which
+    display.initialize_window() already did; the step-17 point-cloud loop is
+    deleted.)
     """
-    del cube_points[:]
-    del projected_points[:]
-
-    # Start loading the array of vectors, from -1 to 1 in steps of 0.25
-    # (np.linspace avoids the C float-accumulation loop's rounding drift).
-    values = np.linspace(-1.0, 1.0, 9)
-    for x in values:
-        for y in values:
-            for z in values:
-                cube_points.append(np.array([x, y, z], dtype=np.float64))
-    projected_points.extend(np.zeros(2, dtype=np.float64) for _ in range(N_POINTS))
 
 
 def process_input() -> None:
@@ -69,6 +63,7 @@ def process_input() -> None:
     global is_running
 
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:
@@ -92,59 +87,64 @@ def project(point: Vec3) -> Vec2:
 
 
 def update() -> None:
-    """Cap the frame rate, then rotate, translate, and project every point.
+    """Cap the frame rate, then transform and project every mesh face.
 
-    C (changed in this step — busy-wait replaced with a proper delay)::
-
-        int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - previous_frame_time);
-
-        // Only delay execution if we are running too fast
-        if (time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME)
-            SDL_Delay(time_to_wait);
-
-        previous_frame_time = SDL_GetTicks();
-
-    Clock.tick sleeps until FRAME_TARGET_TIME milliseconds have elapsed since
-    the previous call — exactly the SDL_Delay pacing the C code now uses (so
-    the ``time_to_wait``/``previous_frame_time`` bookkeeping is not needed
-    here).
+    Mirrors update() in main.c: for each of the 12 faces, look up its three
+    vertices (1-based indexes!), rotate each around x/y/z, push it away from
+    the camera, project it, and center it on screen. The projected triangle
+    lands in triangles_to_render for render() to draw.
     """
     assert clock is not None
-    clock.tick(display.FPS)
+    clock.tick(display.FPS)  # C: SDL_Delay pacing to FRAME_TARGET_TIME
 
     cube_rotation[0] += 0.01
     cube_rotation[1] += 0.01
     cube_rotation[2] += 0.01
 
-    for i in range(N_POINTS):
-        point = cube_points[i]
+    # Loop all triangle faces of our mesh
+    for i in range(N_MESH_FACES):
+        mesh_face = mesh_faces[i]
 
-        transformed_point = vec3_rotate_x(point, cube_rotation[0])
-        transformed_point = vec3_rotate_y(transformed_point, cube_rotation[1])
-        transformed_point = vec3_rotate_z(transformed_point, cube_rotation[2])
+        face_vertices = (
+            mesh_vertices[mesh_face.a - 1],  # C and .obj indexes are 1-based
+            mesh_vertices[mesh_face.b - 1],
+            mesh_vertices[mesh_face.c - 1],
+        )
 
-        # Move the points away from the camera
-        transformed_point[2] -= camera_position[2]
+        projected_triangle = triangle_t()
 
-        # Project the current point and save the resulting 2D vector
-        projected_points[i] = project(transformed_point)
+        # Loop all three vertices of this current face and apply transformations
+        for j in range(3):
+            transformed_vertex = vec3_rotate_x(face_vertices[j], cube_rotation[0])
+            transformed_vertex = vec3_rotate_y(transformed_vertex, cube_rotation[1])
+            transformed_vertex = vec3_rotate_z(transformed_vertex, cube_rotation[2])
+
+            # Translate the vertex away from the camera
+            transformed_vertex[2] -= camera_position[2]
+
+            # Project the current vertex
+            projected_point = project(transformed_vertex)
+
+            # Scale and translate the projected points to the middle of the screen
+            projected_point[0] += display.window_width / 2
+            projected_point[1] += display.window_height / 2
+
+            projected_triangle.points[j] = projected_point
+
+        # Save the projected triangle in the array of triangles to render
+        triangles_to_render[i] = projected_triangle
 
 
 def render() -> None:
-    """Draw the grid and every projected point, then present the frame."""
+    """Draw the grid and a 3x3 marker on every projected vertex, then present."""
     display.draw_grid()
 
-    # Loop all projected points and render them as 4x4 yellow rectangles,
-    # translated to the center of the screen.
-    for i in range(N_POINTS):
-        projected_point = projected_points[i]
-        display.draw_rect(
-            int(projected_point[0] + (display.window_width / 2)),
-            int(projected_point[1] + (display.window_height / 2)),
-            4,
-            4,
-            0xFFFFFF00,
-        )
+    # Loop all projected triangles and render their vertex positions
+    for i in range(N_MESH_FACES):
+        triangle = triangles_to_render[i]
+        display.draw_rect(int(triangle.points[0][0]), int(triangle.points[0][1]), 3, 3, 0xFFFFFF00)
+        display.draw_rect(int(triangle.points[1][0]), int(triangle.points[1][1]), 3, 3, 0xFFFFFF00)
+        display.draw_rect(int(triangle.points[2][0]), int(triangle.points[2][1]), 3, 3, 0xFFFFFF00)
 
     display.render_color_buffer()
 

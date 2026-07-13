@@ -181,6 +181,13 @@ The Python conversion fixes this without changing behavior when assets exist:
    is genuinely exercised.
 3. Every affected README documents: "drop the original course `.obj` files
    into `assets/` to see the real models."
+4. **Stand-in models are shipped**: since the fallback cube makes the later
+   lessons unrecognizable, generated low-poly stand-ins for `f22.obj`,
+   `f117.obj`, `efa.obj`, `crab.obj`, `drone.obj`, and `runway.obj` live in
+   the affected steps' `assets/`. They are composed of transformed copies of
+   the course cube (same clockwise winding, per-face UVs), so culling,
+   shading, clipping, and texture mapping behave exactly as each lesson
+   intends. Original course models drop in as direct replacements.
 
 The OBJ parser must support the exact subset the C parser supports for that
 step (`v`, `vt`, `f v/vt/vn` — check the step's `mesh.c`).

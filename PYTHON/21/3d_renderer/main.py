@@ -20,6 +20,8 @@ import sys
 import numpy as np
 import pygame
 
+import hud
+
 import display
 import mesh
 from display import (
@@ -43,6 +45,13 @@ from vector import (
     vec3_rotate_z,
 )
 
+
+# Key bindings shown by the on-screen help (press H). Derived from the
+# actual handlers in process_input below.
+KEY_BINDINGS: list[tuple[str, str]] = [
+    ("ESC", "quit"),
+]
+hud.init_hud(KEY_BINDINGS)
 ###############################################################################
 # Array of triangles that should be rendered frame by frame
 ###############################################################################
@@ -85,6 +94,7 @@ def process_input() -> None:
     global is_running
 
     for event in pygame.event.get():
+        hud.handle_event(event)  # H toggles the key-bindings help
         if event.type == pygame.QUIT:
             is_running = False
         elif event.type == pygame.KEYDOWN:

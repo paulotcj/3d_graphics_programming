@@ -1,0 +1,261 @@
+"""display.py — mirrors src/display.c.
+
+Owns the pygame window, the CPU-side color buffer and z-buffer, the render /
+cull mode flags, and the primitive drawing helpers (grid, pixel, line, rect).
+
+Pixel format (CONVENTIONS.md §4): ``color_buffer`` is a NumPy ``uint32``
+array of shape ``(window_height, window_width)`` holding ``0xAARRGGBB``
+values — the exact same literals the C code writes. To present it, the
+buffer bytes are handed to pygame as "BGRA", because a little-endian
+``0xAARRGGBB`` uint32 is the byte sequence BB GG RR AA in memory.
+
+Z-buffer convention (careful — the comparison direction matters):
+the buffer stores ``1.0 - (interpolated 1/w)`` and is cleared to ``1.0``.
+Since ``1/w`` is *larger* for pixels closer to the camera, ``1 - 1/w`` is
+*smaller* for closer pixels, so a pixel wins the depth test when its value
+is **less than** what is already stored.
+
+Like the C step, the buffers themselves are allocated by ``setup()`` in
+main.py; this module only declares the globals (C: ``uint32_t* color_buffer
+= NULL``).
+
+Every per-pixel C loop in this file is re-expressed as a NumPy array
+operation (CONVENTIONS.md §5) — see the comment on each drawing function.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pygame
+
+import hud
+
+FPS: int = 60
+FRAME_TARGET_TIME: int = 1000 // FPS  # kept for parity; pygame's Clock does the waiting
+
+# enum cull_method
+CULL_NONE: int = 0
+CULL_BACKFACE: int = 1
+
+# enum render_method
+RENDER_WIRE: int = 0
+RENDER_WIRE_VERTEX: int = 1
+RENDER_FILL_TRIANGLE: int = 2
+RENDER_FILL_TRIANGLE_WIRE: int = 3
+RENDER_TEXTURED: int = 4
+RENDER_TEXTURED_WIRE: int = 5
+
+# Module-level state — mirrors the globals at the top of display.c.
+window: pygame.Surface | None = None
+color_buffer: np.ndarray | None = None  # (h, w) uint32, 0xAARRGGBB — allocated in main.setup()
+z_buffer: np.ndarray | None = None  # (h, w) float32, cleared to 1.0 — allocated in main.setup()
+window_width: int = 800
+window_height: int = 600
+render_method: int = 0
+cull_method: int = 0
+
+
+def initialize_window(fullscreen: bool = False) -> bool:
+    """Initialize pygame and open the window (C: SDL_Init + SDL_CreateWindow).
+
+    The C step opens a borderless window at the full desktop resolution.
+    Per CONVENTIONS.md §7 the Python default is a friendlier 800x600 window;
+    pass ``fullscreen=True`` (the ``--fullscreen`` flag) for the C behavior.
+    """
+    global color_buffer, window, window_height, window_width, z_buffer
+
+    pygame.init()
+    if not pygame.display.get_init():
+        print("Error initializing SDL.")
+        return False
+
+    if fullscreen:
+        # Mirror the C code: query the desktop resolution and open a
+        # borderless window covering it. Guarded so SDL_VIDEODRIVER=dummy
+        # (which reports no real resolution) falls back to 800x600.
+        info = pygame.display.Info()
+        if info.current_w > 0 and info.current_h > 0:
+            window_width = info.current_w
+            window_height = info.current_h
+        window = pygame.display.set_mode((window_width, window_height), pygame.NOFRAME)
+    else:
+        window = pygame.display.set_mode((window_width, window_height))
+    pygame.display.set_caption("3D Renderer")
+
+    # Step 55: the C moves the color/z buffer allocation into the display
+    # module (they are file-static now); mirrored here.
+    color_buffer = np.zeros((window_height, window_width), dtype=np.uint32)
+    z_buffer = np.ones((window_height, window_width), dtype=np.float32)
+
+    return True
+
+
+def draw_grid() -> None:
+    """Draw a dot every 10 pixels in both axes.
+
+    C: a nested loop stepping x and y by 10. NumPy: one strided slice
+    assignment touches exactly the same pixels (CONVENTIONS.md §5).
+    """
+    assert color_buffer is not None
+    color_buffer[::10, ::10] = 0xFFAAAAAA
+
+
+def draw_pixel(x: int, y: int, color: int) -> None:
+    """Set a single pixel, ignoring coordinates outside the window."""
+    if x < 0 or x >= window_width or y < 0 or y >= window_height:
+        return
+    assert color_buffer is not None
+    color_buffer[y, x] = color
+
+
+def draw_line(x0: int, y0: int, x1: int, y1: int, color: int) -> None:
+    """Draw a line with the DDA algorithm, vectorized.
+
+    C: step along the longest axis one pixel at a time, rounding at each
+    step. NumPy: generate *all* the step positions at once with
+    ``np.linspace``, round them, drop the out-of-bounds ones with a mask,
+    and store with one fancy-indexed assignment (CONVENTIONS.md §5).
+    """
+    assert color_buffer is not None
+    x0, y0, x1, y1 = int(x0), int(y0), int(x1), int(y1)
+
+    delta_x = x1 - x0
+    delta_y = y1 - y0
+    longest_side_length = max(abs(delta_x), abs(delta_y))
+    if longest_side_length == 0:
+        draw_pixel(x0, y0, color)
+        return
+
+    # All intermediate positions in one shot (longest_side_length + 1 steps,
+    # matching the C loop's `i <= longest_side_length`).
+    steps = longest_side_length + 1
+    xs = np.rint(np.linspace(x0, x1, steps)).astype(np.int32)
+    ys = np.rint(np.linspace(y0, y1, steps)).astype(np.int32)
+
+    # Clip to the screen bounds (C relied on draw_pixel's per-call check).
+    on_screen = (xs >= 0) & (xs < window_width) & (ys >= 0) & (ys < window_height)
+    color_buffer[ys[on_screen], xs[on_screen]] = color
+
+
+def draw_rect(x: int, y: int, width: int, height: int, color: int) -> None:
+    """Fill a solid rectangle.
+
+    C: a double loop over width x height calling draw_pixel. NumPy: clamp the
+    rectangle to the screen and assign one 2-D slice (CONVENTIONS.md §5).
+    """
+    assert color_buffer is not None
+    x, y = int(x), int(y)
+
+    x_start = max(x, 0)
+    y_start = max(y, 0)
+    x_end = min(x + width, window_width)
+    y_end = min(y + height, window_height)
+    if x_start >= x_end or y_start >= y_end:
+        return
+    color_buffer[y_start:y_end, x_start:x_end] = color
+
+
+def render_color_buffer() -> None:
+    """Present the color buffer in the window (C: SDL_UpdateTexture + RenderCopy).
+
+    The uint32 0xAARRGGBB buffer is viewed as raw bytes; on a little-endian
+    machine those bytes are ordered BB GG RR AA, which pygame calls "BGRA".
+    """
+    assert color_buffer is not None and window is not None
+    surface = pygame.image.frombuffer(
+        color_buffer.tobytes(), (window_width, window_height), "BGRA"
+    )
+    window.blit(surface, (0, 0))
+    hud.draw(window)  # on-screen key help (H)
+    pygame.display.flip()
+
+
+def clear_color_buffer(color: int) -> None:
+    """Fill the whole color buffer with one color (C: a full-buffer loop)."""
+    assert color_buffer is not None
+    color_buffer[:] = color
+
+
+def clear_z_buffer() -> None:
+    """Reset every depth value to 1.0 — the farthest possible adjusted 1/w."""
+    assert z_buffer is not None
+    z_buffer[:] = 1.0
+
+
+def destroy_window() -> None:
+    """Shut pygame down (C: SDL_DestroyRenderer + SDL_DestroyWindow + SDL_Quit)."""
+    pygame.quit()
+
+###############################################################################
+# Accessor API (new in step 55) — the C makes every display global `static`
+# and exposes it through functions; the Python module does the same so main
+# and triangle stop reaching into the raw state.
+###############################################################################
+def get_window_width() -> int:
+    """Return the window width in pixels."""
+    return window_width
+
+
+def get_window_height() -> int:
+    """Return the window height in pixels."""
+    return window_height
+
+
+def set_render_method(method: int) -> None:
+    """Select what render() draws (RENDER_* constants)."""
+    global render_method
+    render_method = method
+
+
+def set_cull_method(method: int) -> None:
+    """Select backface culling on/off (CULL_* constants)."""
+    global cull_method
+    cull_method = method
+
+
+def is_cull_backface() -> bool:
+    """True when backface culling is enabled."""
+    return cull_method == CULL_BACKFACE
+
+
+def should_render_textured_triangles() -> bool:
+    """True for the two textured render modes."""
+    return render_method in (RENDER_TEXTURED, RENDER_TEXTURED_WIRE)
+
+
+def should_render_wireframe() -> bool:
+    """True for every mode that draws the triangle outlines."""
+    return render_method in (
+        RENDER_WIRE,
+        RENDER_WIRE_VERTEX,
+        RENDER_FILL_TRIANGLE_WIRE,
+        RENDER_TEXTURED_WIRE,
+    )
+
+
+def should_render_filled_triangles() -> bool:
+    """True for the two flat-filled render modes."""
+    return render_method in (RENDER_FILL_TRIANGLE, RENDER_FILL_TRIANGLE_WIRE)
+
+
+def should_render_wire_vertex() -> bool:
+    """True when the little vertex markers should be drawn."""
+    return render_method == RENDER_WIRE_VERTEX
+
+
+def get_zbuffer_at(x: int, y: int) -> float:
+    """Read one z-buffer cell (C: get_zbuffer_at). The vectorized
+    rasterizer in triangle.py reads whole slices instead (CONVENTIONS.md §5);
+    this scalar accessor exists for 1:1 API parity with the C."""
+    assert z_buffer is not None
+    if 0 <= x < window_width and 0 <= y < window_height:
+        return float(z_buffer[y, x])
+    return 1.0
+
+
+def update_zbuffer_at(x: int, y: int, value: float) -> None:
+    """Write one z-buffer cell (C: update_zbuffer_at) — see get_zbuffer_at."""
+    assert z_buffer is not None
+    if 0 <= x < window_width and 0 <= y < window_height:
+        z_buffer[y, x] = value
+
