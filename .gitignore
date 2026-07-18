@@ -52,3 +52,14 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# ---------------------------------------------------------------------------
+# Keep the 3D model assets tracked.
+#
+# The `*.obj` rule above (under "Object files") is boilerplate for COMPILER
+# object files, but it also matches the Wavefront .obj MESH files the renderer
+# loads from assets/. Those meshes are real project assets and MUST be
+# committed, so re-include them here (a later pattern wins over an earlier one).
+# ---------------------------------------------------------------------------
+!**/assets/*.obj
+!**/assets/**/*.obj

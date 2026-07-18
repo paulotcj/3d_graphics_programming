@@ -176,18 +176,17 @@ The Python conversion fixes this without changing behavior when assets exist:
    cube mesh** (the same hard-coded 8-vertex/12-face cube from `mesh.c`,
    including its UVs at the texture steps), using `cube.png` as the fallback
    texture when a texture is expected.
-2. Generate `assets/cube.obj` (vertices + UVs + faces exported from the
-   hard-coded cube data) in every step that references it, so the OBJ parser
-   is genuinely exercised.
+2. `cube.obj` is not shipped either — when referenced, the loader takes the
+   same fallback path to the hard-coded cube data, which is identical
+   geometry.
 3. Every affected README documents: "drop the original course `.obj` files
    into `assets/` to see the real models."
-4. **Stand-in models are shipped**: since the fallback cube makes the later
-   lessons unrecognizable, generated low-poly stand-ins for `f22.obj`,
-   `f117.obj`, `efa.obj`, `crab.obj`, `drone.obj`, and `runway.obj` live in
-   the affected steps' `assets/`. They are composed of transformed copies of
-   the course cube (same clockwise winding, per-face UVs), so culling,
-   shading, clipping, and texture mapping behave exactly as each lesson
-   intends. Original course models drop in as direct replacements.
+4. **The real course models ARE shipped**: the actual `.obj` meshes
+   (cube, f22, f117, efa, crab, runway) live in each referencing step's
+   `assets/` folder and load through the OBJ parser. The missing-file
+   fallback above remains as a safety net if an asset is ever removed. (The
+   root `.gitignore` has a `!**/assets/*.obj` exception so these meshes are
+   not swallowed by the compiler-object-file `*.obj` rule.)
 
 The OBJ parser must support the exact subset the C parser supports for that
 step (`v`, `vt`, `f v/vt/vn` — check the step's `mesh.c`).

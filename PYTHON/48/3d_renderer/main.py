@@ -164,21 +164,25 @@ def process_input() -> None:
                 display.cull_method = display.CULL_BACKFACE
             if event.key == pygame.K_x:  # was d — d now steers the camera
                 display.cull_method = display.CULL_NONE
-            # FPS camera controls (new in step 48) — all scaled by delta_time
-            if event.key == pygame.K_UP:
-                camera.position[1] += 3.0 * delta_time
-            if event.key == pygame.K_DOWN:
-                camera.position[1] -= 3.0 * delta_time
-            if event.key == pygame.K_a:
-                camera.yaw -= 1.0 * delta_time
-            if event.key == pygame.K_d:
-                camera.yaw += 1.0 * delta_time
-            if event.key == pygame.K_w:
-                camera.forward_velocity = camera.direction * (5.0 * delta_time)
-                camera.position = camera.position + camera.forward_velocity
-            if event.key == pygame.K_s:
-                camera.forward_velocity = camera.direction * (5.0 * delta_time)
-                camera.position = camera.position - camera.forward_velocity
+
+    # Continuous camera movement: held keys act every frame (scaled by
+    # delta_time), matching the C's reliance on SDL key-repeat. Discrete
+    # toggles above stay one-shot on KEYDOWN.
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_UP]:
+        camera.position[1] += 3.0 * delta_time
+    if keys[pygame.K_DOWN]:
+        camera.position[1] -= 3.0 * delta_time
+    if keys[pygame.K_a]:
+        camera.yaw -= 1.0 * delta_time
+    if keys[pygame.K_d]:
+        camera.yaw += 1.0 * delta_time
+    if keys[pygame.K_w]:
+        camera.forward_velocity = camera.direction * (5.0 * delta_time)
+        camera.position = camera.position + camera.forward_velocity
+    if keys[pygame.K_s]:
+        camera.forward_velocity = camera.direction * (5.0 * delta_time)
+        camera.position = camera.position - camera.forward_velocity
 
 
 ###############################################################################

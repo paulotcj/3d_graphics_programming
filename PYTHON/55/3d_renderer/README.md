@@ -25,13 +25,10 @@ py -3.12 main.py
 Press **H** in the window for the full key list (on-screen help). `ESC`
 quits.
 
-> **Model note:** the original course `.obj` models were never committed to
-> this repository, so this mirror ships **generated stand-in models** (low-poly
-> but recognizable — see `# comments` inside each `.obj`). They load through
-> the very same parser path the course teaches. If you have the original
-> course models, drop them into `assets/` and they replace the stand-ins
-> as-is; if a model file is missing entirely, the loader still falls back to
-> the built-in cube with a console warning.
+> **Model note:** the real course models are included in this step's
+> `assets/` folder and load through the normal OBJ parser, exactly as in the
+> C course. If a model file is ever removed, the loader prints a one-line
+> warning and falls back to the built-in cube so the step still runs.
 
 ## Performance notes
 

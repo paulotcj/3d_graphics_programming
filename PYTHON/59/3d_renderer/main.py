@@ -230,20 +230,25 @@ def process_input() -> None:
                 set_cull_method(CULL_BACKFACE)
             elif event.key == pygame.K_x:
                 set_cull_method(CULL_NONE)
-            elif event.key == pygame.K_w:
-                rotate_camera_pitch(+3.0 * delta_time)
-            elif event.key == pygame.K_s:
-                rotate_camera_pitch(-3.0 * delta_time)
-            elif event.key == pygame.K_RIGHT:
-                rotate_camera_yaw(+1.0 * delta_time)
-            elif event.key == pygame.K_LEFT:
-                rotate_camera_yaw(-1.0 * delta_time)
-            elif event.key == pygame.K_UP:
-                update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time))
-                update_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()))
-            elif event.key == pygame.K_DOWN:
-                update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time))
-                update_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()))
+
+    # Continuous camera movement: held keys act every frame (scaled by
+    # delta_time), matching the C's reliance on SDL key-repeat. Discrete
+    # toggles above stay one-shot on KEYDOWN.
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_w]:
+        rotate_camera_pitch(+3.0 * delta_time)
+    if keys[pygame.K_s]:
+        rotate_camera_pitch(-3.0 * delta_time)
+    if keys[pygame.K_RIGHT]:
+        rotate_camera_yaw(+1.0 * delta_time)
+    if keys[pygame.K_LEFT]:
+        rotate_camera_yaw(-1.0 * delta_time)
+    if keys[pygame.K_UP]:
+        update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time))
+        update_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()))
+    if keys[pygame.K_DOWN]:
+        update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time))
+        update_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()))
 
 
 ###############################################################################

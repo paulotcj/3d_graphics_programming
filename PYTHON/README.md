@@ -55,27 +55,20 @@ Every graphical step honors three environment variables:
 | `RENDERER_SAVE_FRAME=path.png` | save the final frame to a PNG on exit |
 | `SDL_VIDEODRIVER=dummy` | run without any window (headless) |
 
-## ⚠️ About the `.obj` models
+## About the `.obj` models
 
-The original repo ships only PNG **textures** — the `.obj` **mesh files** the
-C code references from step 22 onward (`cube.obj`, `f22.obj`, `efa.obj`,
-`f117.obj`, `crab.obj`, `drone.obj`, `runway.obj`) were never committed, so
-the C steps as published cannot actually load their models.
+The real course models are **included** in each step's `assets/` folder — the
+detailed jets (F-22, F-117, EFA), the crab, and the runway — and load through
+the OBJ parser exactly as in the C course. The final steps render the full
+runway scene with the jets on it.
 
-The Python mirror fixes this so every step shows a real scene:
-
-- `assets/cube.obj` is generated from the cube hard-coded in the C's
-  `mesh.c`, so the OBJ parser is genuinely exercised.
-- The six missing models were **generated as stand-ins** — low-poly but
-  recognizable jets (F-22, F-117, EFA), a crab, a quadcopter drone, and a
-  runway — with the same clockwise winding and UV conventions the course
-  cube uses, so culling, shading, clipping, and texturing all behave
-  exactly as the lessons intend. The final steps render a full runway scene
-  with jets parked on it.
-- Have the original course models? Drop them into any step's `assets/`
-  folder and they replace the stand-ins as-is.
-- If a model file is deleted, the loader still prints a warning and falls
-  back to the built-in cube — nothing ever crashes over an asset.
+- Historical note: these `.obj` files were originally absent from the repo
+  because the root `.gitignore`'s `*.obj` rule (meant for C *compiler* object
+  files) also matched Wavefront `.obj` meshes. That rule now has an
+  exception for `**/assets/*.obj`, so the models are tracked.
+- If a model file is ever removed, the loader prints a one-line console
+  warning and falls back to the built-in cube — nothing crashes over a
+  missing asset.
 
 ## The journey — step by step
 
